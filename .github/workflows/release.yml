@@ -21,9 +21,14 @@ jobs:
                   node-version: 24
                   cache: 'npm'
 
+            # The tag arrives here through the push mirror from Gitea, so nothing
+            # has necessarily run against this commit before now. Lint and tests
+            # first: a draft release built from a red tree is worse than none.
             - name: Build plugin
               run: |
                   npm ci
+                  npm run lint
+                  npm test
                   npm run build
 
             - name: Check for optional styles

@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-bases-content-cards",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "A Bases card view that shows note content as the cover.",
 	"main": "main.js",
 	"type": "module",
