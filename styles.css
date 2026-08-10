@@ -39,8 +39,15 @@
 	padding: var(--size-4-3);
 }
 
-.bcc-hidden,
-.bcc-card-hidden {
+/*
+ * Compound selectors on purpose. `.bcc-card` and `.bcc-grid` set a display of
+ * their own, and a bare `.bcc-hidden` would tie with them on specificity and
+ * lose to whichever is written last — which is how this first shipped, applying
+ * the class correctly and hiding nothing. Two classes beat one wherever it sits.
+ */
+.bcc-card.bcc-card-hidden,
+.bcc-grid.bcc-hidden,
+.bcc-group-title.bcc-hidden {
 	display: none;
 }
 
