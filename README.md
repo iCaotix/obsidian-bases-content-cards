@@ -52,6 +52,11 @@ To update, run the same three commands again and reload Obsidian.
   under the cover all come from the normal Bases toolbar.
 - **Click anywhere on a card** to open its note; Cmd-click or middle click opens a new tab.
   Links inside a markdown-rendered cover still go where they point.
+- **Your place in the grid is kept.** Open a note, come back, and the grid is where you left
+  it — as it also is after an edit elsewhere in the vault rebuilds the view. It is the note
+  at the top edge that is put back, not a pixel offset, and the tab remembers the heights it
+  had fitted, so a card a thousand cards down lands where it was. Kept per tab, so two tabs
+  on the same base do not drag each other around.
 - **Search inside the notes.** The box above the grid matches the note body, not just its
   name. Cards that miss are hidden, hits are highlighted, and a card whose hit lies past the
   excerpt re-points its cover at the passage that matched.
@@ -86,6 +91,9 @@ Set per view, in the Bases view config:
 | Cover override property | A note property whose value replaces the cover selector for that note |
 | Cover length | Characters before truncation (default 300) |
 | Render markdown | Off by default — plain text is faster and reads fine at excerpt size |
+| Wrap long titles | Off by default — a title too long for its card is cut with an ellipsis. On, it wraps in full and the cover gives up the room |
+| Open notes in a new tab | Off by default — a click opens the note in the base's own tab. A modifier still wins over this |
+| Card tint | None, subtle or strong — each note gets a hue from its path, so the colour is stable across sorts and reopens but means nothing in itself |
 | Card height | Fit to content, or uniform |
 | Maximum card height | Small…extra large, or unlimited — a card then grows to fit its whole cover |
 

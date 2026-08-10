@@ -90,6 +90,40 @@
 }
 
 /*
+ * The tint. Mixed into the theme's own colours rather than laid over them, so a
+ * card stays a card in both light and dark themes — the base carries the
+ * lightness, the hue only leans on it. oklch for the source colour because the
+ * twelve hues have to weigh the same: in sRGB the yellow would arrive twice as
+ * bright as the blue at identical numbers, and only some of the deck would read
+ * as tinted at all.
+ */
+.bcc-tint-subtle {
+	--bcc-tint-bg: 7%;
+	--bcc-tint-border: 25%;
+}
+
+.bcc-tint-strong {
+	--bcc-tint-bg: 16%;
+	--bcc-tint-border: 50%;
+}
+
+.bcc-tint-subtle .bcc-card,
+.bcc-tint-strong .bcc-card {
+	/* --bcc-hue is set per card, from the note's path. The fallback is not decoration:
+	   an unresolvable var here is invalid at computed-value time, which would leave the
+	   card with no background at all rather than falling back to the rule above. */
+	--bcc-tint: oklch(0.72 0.17 var(--bcc-hue, 0));
+	background-color: color-mix(in oklab, var(--background-primary), var(--bcc-tint) var(--bcc-tint-bg));
+	border-color: color-mix(in oklab, var(--background-modifier-border), var(--bcc-tint) var(--bcc-tint-border));
+}
+
+/* The separator is the card's own line, not the theme's, once the card is tinted. */
+.bcc-tint-subtle .bcc-footer,
+.bcc-tint-strong .bcc-footer {
+	border-top-color: color-mix(in oklab, var(--background-modifier-border), var(--bcc-tint) var(--bcc-tint-border));
+}
+
+/*
  * The window the cover is seen through. It is sized by the card, so its
  * clientHeight is the space a card grants its cover — never the space the text
  * wants. overflow:hidden is also what lets it shrink below its content
@@ -131,6 +165,17 @@
 
 .bcc-cover-body > :last-child {
 	margin-bottom: 0;
+}
+
+/*
+ * The renderer puts a copy button in every code block, and everything that makes
+ * it unobtrusive — absolute in the corner, shown on hover — lives under
+ * `.markdown-rendered`, a class a cover has no business wearing. Unstyled, it
+ * lands in the flow as a full-size button. A cover is an excerpt, not a document:
+ * a click anywhere on it opens the note, so there is nothing here to copy from.
+ */
+.bcc-cover-body button.copy-code-button {
+	display: none;
 }
 
 /* Fade rather than a hard cut — but only when something is actually cut off. */
@@ -199,6 +244,18 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/*
+ * Long titles in full, at the price of a taller footer. The cover gives the room
+ * up rather than the card growing on its own: the fitting pass measures the space
+ * that is left after the footer, so nothing here needs to know about it.
+ */
+.bcc-wrap-titles .bcc-title {
+	overflow: visible;
+	text-overflow: clip;
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .bcc-title:hover {

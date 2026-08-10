@@ -38,6 +38,12 @@ export default class ContentCardsPlugin extends Plugin {
 					default: false,
 				},
 				{
+					type: 'toggle',
+					key: 'wrapTitle',
+					displayName: 'Wrap long titles',
+					default: false,
+				},
+				{
 					type: 'dropdown',
 					key: 'cardSize',
 					displayName: 'Card height',
@@ -45,6 +51,23 @@ export default class ContentCardsPlugin extends Plugin {
 					options: {
 						auto: 'Fit to content',
 						uniform: 'Uniform',
+					},
+				},
+				{
+					type: 'toggle',
+					key: 'openInNewTab',
+					displayName: 'Open notes in a new tab',
+					default: false,
+				},
+				{
+					type: 'dropdown',
+					key: 'cardTint',
+					displayName: 'Card tint',
+					default: 'off',
+					options: {
+						off: 'None',
+						subtle: 'Subtle',
+						strong: 'Strong',
 					},
 				},
 				{
