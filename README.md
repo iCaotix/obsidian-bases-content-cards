@@ -27,7 +27,15 @@ Requires Obsidian 1.10.0 or later (the Bases view API).
 
 ## Install
 
-Not in the community catalogue yet, so install it by hand:
+Not in the community catalogue yet. Two ways in the meantime.
+
+**From a release.** Download `main.js`, `manifest.json` and `styles.css` from the
+[latest release](https://github.com/<owner>/obsidian-bases-content-cards/releases/latest) and
+put all three in `<vault>/.obsidian/plugins/bases-content-cards/`. Or point
+[BRAT](https://github.com/TfTHacker/obsidian42-brat) at
+`<owner>/obsidian-bases-content-cards` and let it handle updates.
+
+**From source.**
 
 ```sh
 npm install
@@ -35,15 +43,14 @@ npm run build
 npm run install-to-vault -- "/path/to/your/vault"
 ```
 
-That copies `main.js`, `manifest.json` and `styles.css` into
-`<vault>/.obsidian/plugins/bases-content-cards/`. Enable **Bases Content Cards** under
-Settings → Community plugins, then add a **Content cards** view to any `.base`.
+That copies the same three files into place. To update, run the three commands again.
 
-To update, run the same three commands again and reload Obsidian.
+Either way: enable **Bases Content Cards** under Settings → Community plugins, then add a
+**Content cards** view to any `.base`.
 
 ## What it does
 
-- **Content as cover.** Whole body, a named section (`#Fazit`), or a block (`^abc123`).
+- **Content as cover.** Whole body, a named section (`#Summary`), or a block (`^abc123`).
 - **Cards sized to their content.** Height comes from the note's file size *before* anything
   is read, so cards claim the right space up front and the grid does not jump as text
   arrives. Once the text is there the card is measured and fitted to it — and measured again
@@ -115,7 +122,7 @@ cover: ":"        # not  cover: :
 
 ```yaml
 ---
-cover: "#Fazit"   # not  cover: #Fazit
+cover: "#Summary"   # not  cover: #Summary
 ---
 ```
 
@@ -139,21 +146,23 @@ symlink, hot reload, releasing).
 
 | Document | Contents |
 | --- | --- |
-| [docs/evaluation.md](docs/evaluation.md) | Why this shape, and which alternatives were rejected |
+| [docs/decisions.md](docs/decisions.md) | The choices that shaped the plugin, newest first |
 | [docs/bases-api.md](docs/bases-api.md) | What the Bases plugin API does and does not offer, with sources |
-| [docs/plan-content-cards.md](docs/plan-content-cards.md) | Design and implementation order |
-| [docs/dev-workflow.md](docs/dev-workflow.md) | Repo layout and day-to-day workflow |
+| [docs/dev-workflow.md](docs/dev-workflow.md) | Building, running and releasing it |
 | [docs/roadmap.md](docs/roadmap.md) | What could come next, and what deliberately will not |
 
 ## Status
 
-0.1.0 — ready to use in a real vault, not yet in the community catalogue. The view is
-read-only: it never writes to the vault.
+1.0.0 — in daily use, not yet in the community catalogue. The view is **read-only**: it never
+writes to your vault.
 
 Known limits:
 
 - Non-markdown files in a base (attachments) show as cards with no cover. There is nothing to
   read from them.
-- Cards do not slide up into the gap at the end of a row. That is the price of laying them
-  out with grid spans rather than JS — see [docs/plan-content-cards.md](docs/plan-content-cards.md).
-- `coverSource: auto` (a note's first image as the cover) is designed but not built.
+- Cards do not slide up into the gap at the end of a row. That is the price of laying them out
+  with grid spans rather than JS — see [docs/decisions.md](docs/decisions.md).
+- No image covers. A note's first embed as the cover is on the
+  [roadmap](docs/roadmap.md), not in this release.
+- Properties under the cover are shown, not editable. Also on the
+  [roadmap](docs/roadmap.md), and the largest thing missing.

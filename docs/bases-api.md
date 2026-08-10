@@ -1,8 +1,10 @@
 # The Bases API — what is actually there
 
-As of 2026-08-10. Checked against `obsidian.d.ts` (branch `master`, obsidianmd/obsidian-api),
-the developer docs and the help pages. Installed locally: **Obsidian 1.13.4** — everything
-named below (`@since 1.10.0`) is available there.
+What the plugin API offers a Bases view, and what it does not. This is the reference the
+plugin's shape follows from; the choices themselves are in [decisions.md](decisions.md).
+
+As of 2026-08-10, checked against `obsidian.d.ts` (branch `master`, obsidianmd/obsidian-api),
+the developer docs and the help pages. Everything named below is `@since 1.10.0`.
 
 ## 1. The only extension point is the view type
 
@@ -63,8 +65,7 @@ type BasesPropertyId = `${'note' | 'formula' | 'file'}.${string}`;
 
 Important when estimating the work: **the UI for filtering, sorting, grouping and picking
 properties is supplied by Bases itself, through its toolbar.** The view receives the data
-already filtered and sorted. All that is left to build is the rendering: cells, header row,
-column widths, inline editing.
+already filtered, sorted and grouped. All that is left to build is the rendering.
 
 `onDataUpdated()` is synchronous. Anything asynchronous (reading file content) has to go
 through a cache plus a later repaint.
@@ -105,7 +106,7 @@ Both are triggered manually. The only thing missing is *automatic* writing on ev
 
 | Project | Approach | Relevance |
 | --- | --- | --- |
-| [CodyBontecou/obsidian-bases-preview](https://github.com/codybontecou/obsidian-bases-preview) | **MutationObserver + DOM injection** of a `<td>` column into the built-in table; reads via `vault.cachedRead()`, strips frontmatter, optionally a single heading, truncates to N characters | Does essentially idea A — but by the fragile route. At the same time it is evidence that there is no clean way. |
+| [CodyBontecou/obsidian-bases-preview](https://github.com/codybontecou/obsidian-bases-preview) | **MutationObserver + DOM injection** of a `<td>` column into the built-in table; reads via `vault.cachedRead()`, strips frontmatter, optionally a single heading, truncates to N characters | Note content in the built-in table, by the only route there is — and evidence that the route is not a clean one |
 | [xiwcx/obsidian-bases-kanban](https://github.com/xiwcx/obsidian-bases-kanban) | a real `registerBasesView` view (kanban, drag & drop) | Reference implementation for a custom view type |
 | [dsebastien/obsidian-life-tracker-base-view](https://github.com/dsebastien/obsidian-life-tracker-base-view) | custom view plus thorough documentation on building views | Second reference |
 | GoodBases | a collection of additional view types | Reference |

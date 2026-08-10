@@ -1,7 +1,7 @@
 {
 	"id": "bases-content-cards",
 	"name": "Bases Content Cards",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "1.10.0",
 	"description": "A Bases view that shows notes as cards, using the note's own content as the cover instead of an image.",
 	"author": "Marcel Schwarz",

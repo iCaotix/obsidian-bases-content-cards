@@ -46,7 +46,7 @@ function bodyFor(index) {
 	}
 
 	if (index % 4 === 0) {
-		parts.push('## Fazit', paragraph(index + 99));
+		parts.push('## Summary', paragraph(index + 99));
 	}
 
 	if (index % 9 === 0) {
@@ -67,7 +67,7 @@ function noteFor(index) {
 		`tags: [${tags.join(', ')}]`,
 		`created: ${created}`,
 		// Quoted on purpose: bare `:` is invalid YAML and a bare `#` starts a comment.
-		`cover: "${index % 8 === 0 ? '#Fazit' : ':'}"`,
+		`cover: "${index % 8 === 0 ? '#Summary' : ':'}"`,
 		'---',
 		'',
 		bodyFor(index),

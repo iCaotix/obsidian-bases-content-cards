@@ -1,7 +1,7 @@
 # Roadmap
 
-Where this could go after v1. Design and the decisions already taken:
-[plan-content-cards.md](plan-content-cards.md), what the API does and does not allow:
+Where this could go after 1.0.0. The decisions already taken:
+[decisions.md](decisions.md), what the API does and does not allow:
 [bases-api.md](bases-api.md).
 
 Nothing here is promised. The order is by confidence, not by date: the first section is work
@@ -21,16 +21,16 @@ The largest single thing missing, and the one that has been asked for. Today the
 a property without leaving the view, and a card that shows a status and cannot change it is
 half a tool.
 
-**The cover stays read-only.** That is the line, and it is the same one v1 drew for a
+**The cover stays read-only.** That is the line, and it is the same one 1.0.0 drew for a
 different reason. A cover is an excerpt of a body that lives somewhere else; editing it means
 writing back into a range of a file that may have moved since it was read, which is the one
-risk the card design was chosen to avoid ([plan-content-cards.md](plan-content-cards.md),
-"What the table design loses"). Metadata has none of that problem: a property is addressed by
-name, and Obsidian already owns the write.
+risk the card design was chosen to avoid ([decisions.md](decisions.md), "The cover is
+read-only"). Metadata has none of that problem: a property is addressed by name, and Obsidian
+already owns the write.
 
-Note that this reverses the v1 note that "nobody expects to edit a card". That was true of the
-*cover*, and was allowed to stand for the whole card because nothing then distinguished them.
-It does not survive the distinction.
+Note that this reverses the original reasoning that "nobody expects to edit a card". That was
+true of the *cover*, and was allowed to stand for the whole card because nothing then
+distinguished them. It does not survive the distinction.
 
 ### What is actually editable
 

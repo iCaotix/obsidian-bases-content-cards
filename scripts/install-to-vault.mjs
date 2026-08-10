@@ -1,13 +1,13 @@
 /**
  * Installs the built plugin into a vault, the way a release would.
  *
- * This is the route into a *real* vault. A symlink is for the dev vault only:
- * it makes the production vault track whatever half-finished build happens to
- * be on disk, and this one auto-commits through obsidian-git. Copying pins it
- * to a build you deliberately made.
+ * This is the route into a vault you actually use. A symlink is for the dev
+ * vault only: it makes the vault track whatever half-finished build happens to
+ * be on disk, which for a syncing or auto-committing vault means shipping it
+ * everywhere. Copying pins it to a build you deliberately made.
  *
  *   npm run build
- *   node scripts/install-to-vault.mjs "$HOME/Git/Obsidian Vault"
+ *   node scripts/install-to-vault.mjs "/path/to/your/vault"
  */
 
 import { access, copyFile, lstat, mkdir, readFile } from 'node:fs/promises';

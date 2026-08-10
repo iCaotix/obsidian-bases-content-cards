@@ -1,10 +1,12 @@
-# Dev workflow for the plugin
+# Dev workflow
 
-Applies to `bases-content-cards`. Plan: [plan-content-cards.md](plan-content-cards.md),
-API facts: [bases-api.md](bases-api.md).
+How to build, run and release `bases-content-cards`. What the API offers:
+[bases-api.md](bases-api.md). Why the plugin is shaped as it is:
+[decisions.md](decisions.md).
 
-Available locally: Node v24.18.1, npm 11.16.0, Obsidian 1.13.4. The npm package `obsidian`
-sits at 1.13.1 — the Bases types (`@since 1.10.0`) are included in it.
+Needs Node 22.18 or later — the test suite runs TypeScript through Node's type stripping — and
+Obsidian 1.10.0 or later for the Bases view API. The `obsidian` npm package carries the Bases
+types.
 
 ## Ground rule: a separate dev vault
 
@@ -13,8 +15,8 @@ The documentation is unusually blunt on this point:
 > "one mistake can lead to unintended changes to your vault. To prevent data loss, you
 > should never develop plugins in your main vault."
 
-Here that goes double: `Obsidian Vault` hangs off obsidian-git with auto-commit. A plugin that
-touches files while being tested writes that into the history unasked.
+Worth taking literally if your vault syncs or auto-commits: a plugin that touches files while
+being tested writes that into the history unasked.
 
 So: a second vault, e.g. `~/Git/obsidian-dev-vault/`.
 
@@ -45,14 +47,9 @@ follows the symlink without trouble.
 ## Setup
 
 ```sh
-# 1. Repo from the official template (GitHub "Use this template",
-#    or clone it directly and throw the history away)
-git clone https://github.com/obsidianmd/obsidian-sample-plugin \
-    ~/Git/obsidian-bases-content-cards
+# 1. The repo and its dependencies
 cd ~/Git/obsidian-bases-content-cards
-rm -rf .git && git init
 npm install
-npm install obsidian@latest --save-dev
 
 # 2. Create the dev vault (an empty folder, opened once in Obsidian)
 mkdir -p ~/Git/obsidian-dev-vault/.obsidian/plugins
@@ -65,10 +62,6 @@ ln -s ~/Git/obsidian-bases-content-cards \
 git clone https://github.com/pjeby/hot-reload \
     ~/Git/obsidian-dev-vault/.obsidian/plugins/hot-reload
 ```
-
-Adjust `manifest.json`: `id: bases-content-cards`, `isDesktopOnly: false` and
-`minAppVersion: "1.10.2"` — `createFileForView` only exists from 1.10.2 onwards; without that
-function `1.10.0` is enough.
 
 Enable both plugins in the dev vault's community plugin settings.
 
@@ -105,11 +98,11 @@ node scripts/seed-dev-vault.mjs ~/Git/obsidian-dev-vault 600 # the load case
 
 Deliberately **synthetic rather than copied**. What matters here is the spread of note lengths
 — that is what decides whether the `file.size` estimate holds up. The script produces empty
-notes, one-liners, medium and long ones, plus `## Fazit` sections and block IDs, so that every
+notes, one-liners, medium and long ones, plus `## Summary` sections and block IDs, so that every
 selector can be tried out. An empty card should look empty, not broken.
 
-If real notes after all: always a **copy** of a slice, never a symlink to the production vault.
-Otherwise a bug in the plugin writes into the vault, and that gets auto-committed.
+If real notes after all: always a **copy** of a slice, never a symlink to the vault you
+actually use. Otherwise a bug in the plugin writes into notes you cannot afford to lose.
 
 ## Testing without Obsidian
 
@@ -124,39 +117,55 @@ What tests need: `CachedMetadata` fixtures (`frontmatterPosition`, `headings[]`,
 — you can grab those from the dev vault's devtools console
 (`app.metadataCache.getFileCache(app.workspace.getActiveFile())`) and store them as JSON.
 
+## Where the code lives
+
+`origin` is a self-hosted Gitea instance, and that is the source of truth. A push mirror
+copies `main` and the tags to `https://github.com/<owner>/obsidian-bases-content-cards`,
+which exists for the two things that only exist on GitHub: releases BRAT can install from,
+and the community catalogue, whose submission is a PR against a GitHub repo.
+
+> Replace `<owner>` here and in the [README](../README.md) once the mirror exists —
+> `grep -rn '<owner>' .` finds every place.
+
+**Nothing is merged on GitHub.** A push mirror overwrites, so a commit made or a PR merged
+there is gone on the next sync. Anything that arrives that way has to be applied on Gitea
+instead. Issues and discussions are fine.
+
+The mirror must be set to push tags, or the release workflow never fires. In Gitea:
+Settings → Repository → Mirror Settings → push mirror, with an SSH deploy key or a PAT that
+has `contents: write` on the GitHub side.
+
 ## Releasing
 
-1. `npm version patch|minor` — the bundled `version-bump.mjs` writes the new version into
-   `manifest.json` and records it together with `minAppVersion` in `versions.json`.
-2. Push the tag.
-3. `npm run build`. A release is three files: `main.js`, `manifest.json`, `styles.css`.
-4. **Install into the real vault as a copy, not as a symlink.** The production vault should
-   only ever see builds you deliberately made — a symlink makes it track whatever is on disk,
-   and this vault auto-commits:
+1. `npm version patch|minor|major` — the bundled `version-bump.mjs` writes the new version
+   into `manifest.json` and records it with `minAppVersion` in `versions.json`. Commit those.
+2. Push the tag to Gitea. The mirror carries it to GitHub, and
+   `.github/workflows/release.yml` builds it there: `npm ci`, typecheck, lint, tests, bundle,
+   then a **draft** release with `main.js`, `manifest.json` and `styles.css` attached.
+3. Check the draft, then publish it. A release is exactly those three files — the tag name is
+   the bare version, `1.0.0` and not `v1.0.0`, because that is what Obsidian's installer
+   expects.
 
-   ```sh
-   npm run install-to-vault -- "$HOME/Git/Obsidian Vault"
-   ```
+If the runner is unavailable, the same three files come out of `npm run build` locally and can
+be attached by hand.
 
-   The script refuses a path with no `.obsidian` folder, refuses to write through a symlink,
-   and refuses to run before `npm run build`.
+Into a vault of your own, at any point:
 
-5. Only once it has proved itself: a PR against `obsidianmd/obsidian-releases` for the
-   community catalogue.
+```sh
+npm run install-to-vault -- "/path/to/your/vault"
+```
 
-Two things that do not work yet, and why they are not in the loop above:
+Always a copy, never a symlink — a vault you actually use should only ever see builds you
+deliberately made. The script refuses a path with no `.obsidian` folder, refuses to write
+through a symlink, and refuses to run before `npm run build`.
 
-- `.github/workflows/release.yml` builds a draft GitHub release from a tag, but `origin` is a
-  self-hosted Forgejo instance, so nothing runs it. It is kept for the day the repo also lives
-  on GitHub; until then step 3 is done locally.
-- **BRAT is not an install route.** It installs from GitHub releases only. Hence the copy
-  script rather than the recommendation in the Obsidian docs.
+**BRAT installs from GitHub releases only**, which is the practical reason the mirror has to
+carry tags at all.
 
-## Order of the first sessions
+## Community catalogue
 
-1. Setup as above, the plugin registers an empty view that renders "hello". Proves the whole
-   chain including hot-reload.
-2. `selector.ts` plus tests. No Obsidian, hence quick.
-3. Cards with `file.name` and cover `:` — the first real view.
-
-From here on the plan in [plan-content-cards.md](plan-content-cards.md) applies.
+Not submitted. When it is, it is a PR against
+[`obsidianmd/obsidian-releases`](https://github.com/obsidianmd/obsidian-releases) adding an
+entry to `community-plugins.json`, and the repo it points at must be the GitHub mirror. The
+checks worth passing first are the ones `eslint-plugin-obsidianmd` already runs in
+`npm run lint`.
