@@ -158,7 +158,7 @@ symlink, hot reload, releasing).
 
 ## Status
 
-1.0.0 — in daily use, not yet in the community catalogue. The view is **read-only**: it never
+1.0.1 — in daily use, not yet in the community catalogue. The view is **read-only**: it never
 writes to your vault.
 
 Known limits:
