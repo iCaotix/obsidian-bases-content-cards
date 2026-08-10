@@ -1,182 +1,180 @@
-# Plan: Bases-Card-View mit Inhalt als Cover
+# Plan: a Bases card view with content as the cover
 
-Arbeitstitel `bases-content-cards`. Bewertung und Alternativen: [evaluation.md](evaluation.md),
-API-Fakten: [bases-api.md](bases-api.md).
+Working title `bases-content-cards`. Evaluation and alternatives: [evaluation.md](evaluation.md),
+API facts: [bases-api.md](bases-api.md).
 
-Ersetzt den ursprünglichen Tabellen-Plan. Grund: der Nutzen von Idee A liegt im *Sehen* des
-Inhalts, nicht im Tabellenraster — und als Karte kostet er einen Bruchteil.
+Replaces the original table plan. Reason: the value of idea A lies in *seeing* the content,
+not in the table grid — and as a card it costs a fraction.
 
-## Ziel v1
+## Goal for v1
 
-Ein per `registerBasesView()` registrierter View-Typ `content-cards`. Eine Karte je Notiz,
-Aufbau wie Google Keep bzw. Notion-Gallery:
+A view type `content-cards` registered via `registerBasesView()`. One card per note, laid out
+like Google Keep or a Notion gallery:
 
 ```
 ┌────────────────┐  ┌────────────────┐
-│  Ausschnitt    │  │  Kurze Notiz   │   ← "Cover" = Notizinhalt statt Bild
-│  aus dem Body  │  ├────────────────┤     Höhe je Karte nach Inhaltsmenge
-│  der Notiz     │  │  Titel         │
-│                │  │  tags · Link   │
+│  Excerpt from  │  │  Short note    │   ← "cover" = note content instead of an image
+│  the note's    │  ├────────────────┤     height per card follows the amount of content
+│  body          │  │  Title         │
+│                │  │  tags · link   │
 │                │  └────────────────┘
 ├────────────────┤  ┌────────────────┐
-│  Titel         │  │  Mittellang    │
-│  tags · Link   │  │                │   ← Properties aus config.getOrder()
+│  Title         │  │  Medium note   │
+│  tags · link   │  │                │   ← properties from config.getOrder()
 └────────────────┘  │                │
                     ├────────────────┤
-                    │  Titel         │
-                    │  tags · Link   │
+                    │  Title         │
+                    │  tags · link   │
                     └────────────────┘
 ```
 
-Der eingebaute Cards-View nimmt eine Property als Bild-Cover. Hier ist das Cover Text, aus
-der Notiz gelesen. Alles darunter kommt unverändert aus der Bases-Toolbar.
+The built-in Cards view takes a property as an image cover. Here the cover is text, read from
+the note. Everything below it comes unchanged from the Bases toolbar.
 
-## Was gegenüber dem Tabellen-Entwurf entfällt
+## What the table design loses
 
-| Entfällt | Warum |
+| Dropped | Why |
 | --- | --- |
-| Kopfzeile, Spaltenbreiten, Drag-Reorder | Karten haben kein Raster |
-| Zellen-Renderer je `Value`-Typ im Grid | Properties sind Label/Wert-Zeilen bzw. Chips, ein Renderer reicht |
-| Inline-Editing | Bei einer Karte erwartet niemand Editieren — Klick öffnet die Notiz. Read-only ist hier kein Kompromiss, sondern das erwartete Verhalten. |
-| `contentColumns` als Liste | Eine Karte hat **ein** Cover, keine N Inhaltsspalten. Die Konfiguration schrumpft auf einen Selektor. |
-| Zeilenbereiche (`12:20`) | Für ein Cover will man "Anfang der Notiz" oder "Abschnitt X". Zeilennummern lösen kein Problem, das hier auftritt — raus aus v1. |
+| Header row, column widths, drag-to-reorder | Cards have no grid |
+| A cell renderer per `Value` type | Properties are label/value rows or chips; one renderer is enough |
+| Inline editing | Nobody expects to edit a card — a click opens the note. Read-only is not a compromise here, it is the expected behaviour. |
+| `contentColumns` as a list | A card has **one** cover, not N content columns. The configuration shrinks to a single selector. |
+| Line ranges (`12:20`) | For a cover you want "the start of the note" or "section X". Line numbers solve no problem that occurs here — out of v1. |
 
-Damit bleibt vom Aufwand fast nur noch das übrig, worum es eigentlich geht: Inhalt lesen,
-zuschneiden, anzeigen.
+What is left of the effort is almost exactly the part that matters: read content, trim it,
+show it.
 
-## Konfiguration
+## Configuration
 
-Über `BasesViewRegistration.options`:
+Via `BasesViewRegistration.options`:
 
-- `coverSelector` — Default `:` (ganzer Body ohne Frontmatter, gekürzt). Weiter erlaubt:
-  `#Überschrift`, `^block-id`.
-- `selectorProperty` (optional) — Notiz-Property, die `coverSelector` pro Notiz überschreibt.
-  Der Gedanke aus der ursprünglichen Idee bleibt erhalten, ohne Pflicht zu werden.
-  **Im Frontmatter muss der Wert in Anführungszeichen stehen** — ein nacktes `:` ist
-  ungültiges YAML, ein nacktes `#` beginnt einen Kommentar. Also `cover: ":"` und
-  `cover: "#Fazit"`. Ohne Quotes ist die Property leer und der View fällt auf seine
-  eigene Einstellung zurück; das ist gutartig, aber unsichtbar.
-- `coverSource` — `content` | `image` | `auto`. Bei `auto`: erstes Embed der Notiz als Bild,
-  sonst Text. `file.embeds` liefert die Kandidaten ohne eigenen Parser.
-- `maxLength` — Zeichen, Default 300.
-- `renderMode` — `text` (Default) | `markdown`.
-- `cardSize` — `auto` (Default, Höhe je Karte nach Inhaltsmenge) | `uniform` (alle gleich).
-- `sizeProperty` (optional) — Notiz-Property, die die Kartengröße pro Notiz erzwingt
+- `coverSelector` — default `:` (the whole body without frontmatter, truncated). Also allowed:
+  `#Heading`, `^block-id`.
+- `selectorProperty` (optional) — a note property that overrides `coverSelector` per note.
+  The idea from the original note survives without becoming mandatory.
+  **In frontmatter the value must be quoted** — a bare `:` is invalid YAML, a bare `#` starts
+  a comment. So `cover: ":"` and `cover: "#Conclusion"`. Without quotes the property is empty
+  and the view falls back to its own setting; that is benign, but invisible.
+- `coverSource` — `content` | `image` | `auto`. With `auto`: the note's first embed as an
+  image, otherwise text. `file.embeds` supplies the candidates without a parser of our own.
+- `maxLength` — characters, default 300.
+- `renderMode` — `text` (default) | `markdown`.
+- `cardSize` — `auto` (default, height per card follows the amount of content) | `uniform`
+  (all the same).
+- `sizeProperty` (optional) — a note property that forces the card size per note
   (`s` | `m` | `l` | `xl`).
-- `maxSize` — Obergrenze in Rasterstufen, damit eine lange Notiz nicht die halbe Spalte
-  belegt. Default `l`. Zusätzlich `unlimited`: die Karte wächst dann, bis das ganze Cover
-  hineinpasst. In der Praxis begrenzt `maxLength` (Default 300 Zeichen) die Höhe ohnehin —
-  wer wirklich lange Karten will, muss beides hochsetzen.
-  Der Verlauf am unteren Rand erscheint nur noch, wenn tatsächlich etwas abgeschnitten ist;
-  bei `unlimited` ist das meist nicht der Fall, und verblassender vollständiger Text sähe
-  nach Fehler aus.
+- `maxSize` — an upper bound in grid steps, so that a long note does not take up half the
+  column. Default `l`. Plus `unlimited`: the card then grows until the whole cover fits. In
+  practice `maxLength` (default 300 characters) limits the height anyway — anyone who really
+  wants tall cards has to raise both.
+  The fade at the bottom edge only appears when something is actually cut off; with
+  `unlimited` that is usually not the case, and fading out complete text would look like a
+  fault.
 
-Welche Properties unter dem Cover erscheinen und in welcher Reihenfolge, bestimmt weiter
-`config.getOrder()`, also der Property-Picker der Toolbar. Dafür ist keine eigene Option
-nötig.
+Which properties appear under the cover, and in which order, is still decided by
+`config.getOrder()`, that is, the toolbar's property picker. No option of our own is needed
+for it.
 
-## Architektur
+## Architecture
 
-Unverändert gegenüber dem Tabellen-Plan, nur der View-Teil ist kleiner:
+Unchanged from the table plan, only the view part is smaller:
 
-1. **`selector.ts`** — reine Funktionen, kein Obsidian-Bezug: `parseSelector()`,
-   `resolve(content, cache, selector)`. Bleibt die Stelle, die sich unverändert als
-   Formel-Funktion herausreichen lässt, falls Obsidian eine Funktions-API nachliefert.
-   Frontmatter über `frontmatterPosition` abschneiden, Überschriften/Blöcke über
-   `metadataCache.getFileCache()` — kein eigener Markdown-Parser.
-2. **`contentCache.ts`** — `Map<path, { mtime, text }>`, gefüllt per `vault.cachedRead()`,
-   invalidiert über `mtime` und `vault.on('modify')`.
-3. **`view.ts`** — `BasesView`. Rendert `data.groupedData`, eine Karte je `BasesEntry`,
-   Gruppen als Zwischenüberschriften.
-4. **`main.ts`** — Registrierung, Styles.
+1. **`selector.ts`** — pure functions, no Obsidian dependency: `parseSelector()`,
+   `resolve(content, cache, selector)`. This stays the part that could be handed out unchanged
+   as a formula function should Obsidian ship a function API. Frontmatter is cut off via
+   `frontmatterPosition`, headings and blocks come from `metadataCache.getFileCache()` — no
+   Markdown parser of our own.
+2. **`contentCache.ts`** — `Map<path, { mtime, text }>`, filled via `vault.cachedRead()`,
+   invalidated by `mtime` and `vault.on('modify')`.
+3. **`view.ts`** — the `BasesView`. Renders `data.groupedData`, one card per `BasesEntry`,
+   groups as intertitles.
+4. **`main.ts`** — registration, styles.
 
-### Individuelle Kartenhöhe je Notiz
+### Per-note card height
 
-Jede Karte soll so hoch sein, wie ihr Inhalt es verlangt — kurze Notiz, kurze Karte. Das ist
-machbar, hat aber genau einen Haken, und der bestimmt das Vorgehen.
+Every card should be as tall as its content demands — short note, short card. That is doable,
+but it has exactly one catch, and the catch dictates the approach.
 
-**Der Haken:** Der Inhalt trifft verzögert ein (`cachedRead` ist async). Wer die Karte erst
-rendert und dann wachsen lässt, schiebt bei jedem eintreffenden Text das halbe Layout um.
-Bei 370 Notizen in `Knowledgebase.base` springt die Seite dann sekundenlang.
+**The catch:** content arrives late (`cachedRead` is async). Render the card first and let it
+grow afterwards, and every arriving text shoves half the layout around. With 370 notes in
+`Knowledgebase.base` the page then jumps for seconds.
 
-**Die Lösung:** Die Höhe *schätzen, bevor gelesen wird*. `file.size` ist eine eingebaute
-Bases-Property und über `entry.getValue('file.size')` **synchron** verfügbar — ohne jede
-Datei-I/O. Bytes → Größenstufe → die Karte belegt ihren Platz sofort, korrekt gestuft, und
-der Text füllt ihn später nur noch aus.
+**The fix:** *estimate the height before reading*. `file.size` is a built-in Bases property and
+available **synchronously** via `entry.getValue('file.size')` — with no file I/O at all. Bytes
+→ size step → the card claims its space immediately, correctly graded, and the text merely
+fills it in later.
 
-Ablauf je Karte:
+Per card:
 
-1. `file.size` lesen (synchron) → Stufe `s` / `m` / `l` / `xl` → `grid-row: span N`.
-2. `sizeProperty` der Notiz überschreibt die Stufe, falls gesetzt.
-3. Inhalt trifft ein → einmalig nachmessen. Weicht die tatsächliche Höhe um mehr als eine
-   Stufe ab, Stufe einmal korrigieren (mit Transition), sonst clampen und gut.
-4. Beim zweiten Rendern liegt der Text im Cache, ist also synchron da — dann gibt es gar
-   keine Korrektur mehr.
+1. Read `file.size` (synchronously) → step `s` / `m` / `l` / `xl` → `grid-row: span N`.
+2. The note's `sizeProperty` overrides the step, if set.
+3. Content arrives → measure once. If the actual height is off by more than one step, correct
+   the step once (with a transition), otherwise clamp and be done.
+4. On a second render the text is in the cache, so it is there synchronously — and then there
+   is no correction at all.
 
-**Einschränkungen, ehrlich:** `file.size` zählt das Frontmatter mit; bei kurzen Notizen mit
-viel Frontmatter überschätzt es. Und bei `coverSelector: "#Fazit"` sagt die Dateigröße nichts
-über die Abschnittslänge. In beiden Fällen greift Schritt 3 — es ruckelt einmal statt gar
-nicht. Deshalb bleibt `cardSize: uniform` als Option: für dichtes Überfliegen großer Bases
-ist gleich hoch ohnehin besser lesbar.
+**Limitations, honestly:** `file.size` counts the frontmatter; for short notes with a lot of
+frontmatter it overestimates. And with `coverSelector: "#Conclusion"` the file size says
+nothing about the length of that section. In both cases step 3 catches it — it jolts once
+instead of not at all. That is why `cardSize: uniform` stays as an option: for skimming large
+bases densely, equal heights read better anyway.
 
-### Warum Grid-Spans und keine Spalten-Masonry
+### Why grid spans and not column masonry
 
-- **CSS `column-count` scheidet aus.** Multi-Column füllt Spalte 1 komplett, dann Spalte 2 —
-  die Lesereihenfolge liefe von oben nach unten statt von links nach rechts. Bases liefert
-  die Daten sortiert; eine nach `created DESC` sortierte Base sähe damit schlicht falsch aus.
-- **Natives CSS-Masonry ist noch nicht nutzbar.** Die CSSWG hat sich auf `display: grid-lanes`
-  festgelegt, Safari 26 hat es als erstes ausgeliefert; in Chromium liegt es hinter einem
-  Flag, stabil erwartet im Laufe von 2026. Obsidian ist Electron/Chromium — also frühestens
-  später, dann per `CSS.supports()` zuschaltbar.
-- **Gewählt: `display: grid` mit `grid-auto-rows: 8px` und `grid-row: span N` je Karte.**
-  Reihenfolge bleibt zeilenweise korrekt, kein JS-Layout, Resize erledigt der Browser. Preis:
-  gelegentlich eine Lücke am Zeilenende, weil Karten nicht hochrutschen. Das ist der
-  Unterschied zu echtem Keep — und der akzeptable Teil des Handels.
-- JS-Masonry (kürzeste Spalte, absolut positioniert) wäre lückenlos, kostet aber eigene
-  Layoutberechnung bei jedem Resize und weicht die Sortierreihenfolge auf. Erst, wenn die
-  Lücken wirklich stören.
+- **CSS `column-count` is out.** Multi-column fills column 1 completely, then column 2 — the
+  reading order would run top to bottom instead of left to right. Bases delivers the data
+  sorted; a base sorted by `created DESC` would simply look wrong.
+- **Native CSS masonry is not usable yet.** The CSSWG settled on `display: grid-lanes`, Safari
+  26 shipped it first; in Chromium it is behind a flag, stable expected during 2026. Obsidian
+  is Electron/Chromium — so later at the earliest, and then switchable via `CSS.supports()`.
+- **Chosen: `display: grid` with `grid-auto-rows: 8px` and `grid-row: span N` per card.** The
+  order stays correct row by row, no JS layout, the browser handles resizing. The price: the
+  occasional gap at the end of a row, because cards do not slide up. That is the difference
+  from real Keep — and the acceptable half of the trade.
+- JS masonry (shortest column, absolutely positioned) would leave no gaps, but costs a layout
+  calculation of our own on every resize and softens the sort order. Only if the gaps really
+  start to hurt.
 
-### Weiteres zur Performance
+### More on performance
 
-- Inhalt nur für sichtbare Karten lesen (`IntersectionObserver`), nicht für alle Treffer.
-  Die `file.size`-Schätzung macht das erst möglich: ungelesene Karten kennen ihre Höhe
-  trotzdem, also stimmen Scrollhöhe und Scrollbar von Anfang an.
-- Auf `maxLength` kürzen, *bevor* gerendert wird.
-- `MarkdownRenderer.render()` ist teuer — Default bleibt Klartext.
-- `data` und die `BasesEntry`-Objekte werden bei jeder Änderung neu erzeugt: keine
-  Referenzen halten, Cache über den Pfad schlüsseln, DOM-Knoten wiederverwenden statt
-  `empty()` + Neuaufbau.
+- Read content only for visible cards (`IntersectionObserver`), not for every hit. The
+  `file.size` estimate is what makes that possible in the first place: unread cards know their
+  height anyway, so scroll height and scrollbar are right from the start.
+- Truncate to `maxLength` *before* rendering.
+- `MarkdownRenderer.render()` is expensive — plain text stays the default.
+- `data` and the `BasesEntry` objects are recreated on every change: hold no references, key
+  the cache by path, reuse DOM nodes instead of `empty()` plus a rebuild.
 
-### Kleinigkeiten mit gutem Verhältnis
+### Small things with a good ratio
 
-- `createFileForView(name, frontmatterProcessor)` (seit 1.10.2) gibt die Keep-typische
-  "+"-Karte am Ende praktisch geschenkt — inklusive vorbelegtem Frontmatter.
-- Klick öffnet die Notiz, Hover zeigt die Vorschau. Beides steht fertig im Beispiel unter
+- `createFileForView(name, frontmatterProcessor)` (since 1.10.2) gives you the Keep-style "+"
+  card at the end practically for free — prefilled frontmatter included.
+- A click opens the note, hover shows the preview. Both are ready-made in the example at
   <https://docs.obsidian.md/plugins/guides/bases-view>.
 
-## Schritte
+## Steps
 
-1. Plugin-Gerüst in einem **separaten Test-Vault** — nicht hier, dieser Vault hängt an
-   obsidian-git mit Auto-Commit.
-2. `selector.ts` + Tests, ohne Obsidian lauffähig, deshalb zuerst.
-3. Minimaler View: Karten mit `file.name` und festem Cover `:`. Beweist die Async-Kette
-   Ende zu Ende.
-4. Properties unter dem Cover aus `config.getOrder()`, Gruppen aus `groupedData`.
-5. Optionen: `coverSelector`, `selectorProperty`, `maxLength`.
-6. Individuelle Kartenhöhe: `file.size`-Stufen → `grid-row: span N`, Korrektur nach dem
-   Laden, `sizeProperty` als Override. Danach Lazy-Loading über `IntersectionObserver`.
-7. `coverSource: auto` (Bild-Embed als Cover), `renderMode: markdown`, `layout: masonry`.
-8. Gegen echte Daten: `Knowledgebase.base` (~370 Notizen) als Lastfall,
-   `Databases/Meine Software` als inhaltlicher — dort sind viele Items noch leer, und ein
-   leeres Cover zeigt genau das auf einen Blick.
+1. Plugin scaffold in a **separate test vault** — not this one, this vault hangs off
+   obsidian-git with auto-commit.
+2. `selector.ts` plus tests, runnable without Obsidian, hence first.
+3. Minimal view: cards with `file.name` and a fixed cover `:`. Proves the async chain end to
+   end.
+4. Properties under the cover from `config.getOrder()`, groups from `groupedData`.
+5. Options: `coverSelector`, `selectorProperty`, `maxLength`.
+6. Per-note card height: `file.size` steps → `grid-row: span N`, correction after loading,
+   `sizeProperty` as an override. Then lazy loading via `IntersectionObserver`.
+7. `coverSource: auto` (image embed as cover), `renderMode: markdown`, `layout: masonry`.
+8. Against real data: `Knowledgebase.base` (~370 notes) as the load case,
+   `Databases/Meine Software` as the content case — many items there are still empty, and an
+   empty cover shows exactly that at a glance.
 
-## Risiken
+## Risks
 
-- **Karten skalieren schlechter als Zeilen.** 370 Karten scrollen sich zäh und lassen sich
-  schlechter vergleichen als eine Tabelle. Sortieren und Filtern bleiben über die Toolbar
-  erreichbar, aber der Überblick ist ein anderer. Für große Bases bleibt die eingebaute
-  Tabelle die bessere View — beide nebeneinander in derselben `.base` sind explizit
-  vorgesehen.
-- **API-Bewegung:** Bases ist jung (View-API seit 1.10.0, `createFileForView` erst 1.10.2).
-- **Scope:** `coverSource: auto` und `masonry` sind die zwei Stellen, an denen sich das
-  Projekt ausdehnen kann. Bewusst hinter Schritt 6 gelegt.
+- **Cards scale worse than rows.** 370 cards scroll sluggishly and compare worse than a table.
+  Sorting and filtering stay reachable via the toolbar, but the overview is a different one.
+  For large bases the built-in table remains the better view — both side by side in the same
+  `.base` is explicitly supported.
+- **API movement:** Bases is young (view API since 1.10.0, `createFileForView` only since
+  1.10.2).
+- **Scope:** `coverSource: auto` and `masonry` are the two places where the project can
+  expand. Deliberately placed behind step 6.

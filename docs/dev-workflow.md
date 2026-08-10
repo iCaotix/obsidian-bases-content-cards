@@ -1,32 +1,32 @@
-# Dev-Workflow für das Plugin
+# Dev workflow for the plugin
 
-Gilt für `bases-content-cards`. Plan: [plan-content-cards.md](plan-content-cards.md),
-API-Fakten: [bases-api.md](bases-api.md).
+Applies to `bases-content-cards`. Plan: [plan-content-cards.md](plan-content-cards.md),
+API facts: [bases-api.md](bases-api.md).
 
-Lokal vorhanden: Node v24.18.1, npm 11.16.0, Obsidian 1.13.4. Das npm-Paket `obsidian`
-steht bei 1.13.1 — die Bases-Typen (`@since 1.10.0`) sind darin enthalten.
+Available locally: Node v24.18.1, npm 11.16.0, Obsidian 1.13.4. The npm package `obsidian`
+sits at 1.13.1 — the Bases types (`@since 1.10.0`) are included in it.
 
-## Grundsatz: getrennter Dev-Vault
+## Ground rule: a separate dev vault
 
-Die Doku ist an der Stelle ungewöhnlich deutlich:
+The documentation is unusually blunt on this point:
 
 > "one mistake can lead to unintended changes to your vault. To prevent data loss, you
 > should never develop plugins in your main vault."
 
-Hier gilt das doppelt: `Obsidian Vault` hängt an obsidian-git mit Auto-Commit. Ein Plugin,
-das beim Testen Dateien anfasst, schreibt das ungefragt in die Historie.
+Here that goes double: `Obsidian Vault` hangs off obsidian-git with auto-commit. A plugin that
+touches files while being tested writes that into the history unasked.
 
-Also ein zweiter Vault, z. B. `~/Git/obsidian-dev-vault/`.
+So: a second vault, e.g. `~/Git/obsidian-dev-vault/`.
 
-## Aufbau
+## Layout
 
 ```
-~/Git/obsidian-bases-content-cards/        ← das Git-Repo
+~/Git/obsidian-bases-content-cards/        ← the git repo
 ├── src/
-│   ├── main.ts            Registrierung, Settings
-│   ├── view.ts            der BasesView
-│   ├── selector.ts        reine Funktionen, kein Obsidian-Import
-│   └── contentCache.ts    cachedRead + mtime-Invalidierung
+│   ├── main.ts            registration, settings
+│   ├── view.ts            the BasesView
+│   ├── selector.ts        pure functions, no Obsidian import
+│   └── contentCache.ts    cachedRead + mtime invalidation
 ├── tests/selector.test.ts
 ├── styles.css
 ├── manifest.json
@@ -36,17 +36,17 @@ Also ein zweiter Vault, z. B. `~/Git/obsidian-dev-vault/`.
 └── package.json
 
 ~/Git/obsidian-dev-vault/.obsidian/plugins/
-└── bases-content-cards -> ~/Git/obsidian-bases-content-cards   (Symlink)
+└── bases-content-cards -> ~/Git/obsidian-bases-content-cards   (symlink)
 ```
 
-Das Repo liegt bei den anderen Projekten in `~/Git/`, nicht im Vault vergraben. Obsidian
-folgt dem Symlink problemlos.
+The repo lives with the other projects in `~/Git/`, not buried inside a vault. Obsidian
+follows the symlink without trouble.
 
-## Einrichtung
+## Setup
 
 ```sh
-# 1. Repo aus der offiziellen Vorlage (GitHub-Template "Use this template",
-#    oder direkt klonen und die Historie wegwerfen)
+# 1. Repo from the official template (GitHub "Use this template",
+#    or clone it directly and throw the history away)
 git clone https://github.com/obsidianmd/obsidian-sample-plugin \
     ~/Git/obsidian-bases-content-cards
 cd ~/Git/obsidian-bases-content-cards
@@ -54,93 +54,92 @@ rm -rf .git && git init
 npm install
 npm install obsidian@latest --save-dev
 
-# 2. Dev-Vault anlegen (leerer Ordner, in Obsidian einmal öffnen)
+# 2. Create the dev vault (an empty folder, opened once in Obsidian)
 mkdir -p ~/Git/obsidian-dev-vault/.obsidian/plugins
 
-# 3. Symlink statt Kopieren
+# 3. Symlink instead of copying
 ln -s ~/Git/obsidian-bases-content-cards \
       ~/Git/obsidian-dev-vault/.obsidian/plugins/bases-content-cards
 
-# 4. Hot-Reload danebenlegen
+# 4. Put hot-reload next to it
 git clone https://github.com/pjeby/hot-reload \
     ~/Git/obsidian-dev-vault/.obsidian/plugins/hot-reload
 ```
 
-`manifest.json` anpassen: `id: bases-content-cards`, `isDesktopOnly: false` und
-`minAppVersion: "1.10.2"` — `createFileForView` gibt es erst ab 1.10.2, ohne diese Funktion
-reicht `1.10.0`.
+Adjust `manifest.json`: `id: bases-content-cards`, `isDesktopOnly: false` and
+`minAppVersion: "1.10.2"` — `createFileForView` only exists from 1.10.2 onwards; without that
+function `1.10.0` is enough.
 
-Beide Plugins in den Community-Plugin-Einstellungen des Dev-Vaults aktivieren.
+Enable both plugins in the dev vault's community plugin settings.
 
-## Die Schleife
-
-```sh
-npm run dev     # esbuild im Watch-Modus, src/main.ts -> main.js
-```
-
-Speichern → esbuild baut neu → hot-reload sieht die geänderte `main.js` und schaltet das
-Plugin nach ca. 0,75 s aus und wieder ein. Kein Neustart, kein Klicken in den Einstellungen.
-
-Hot-reload erkennt zu überwachende Plugins an einem `.git`-Ordner **oder** einer Datei
-`.hotreload` im Plugin-Verzeichnis. Über den Symlink ist `.git` sichtbar, es sollte also von
-allein greifen; falls nicht, `touch .hotreload` im Repo (und in `.gitignore` eintragen).
-
-Zwei Dinge, die die Schleife durchbrechen:
-
-- **Änderungen an `manifest.json`** greifen erst nach einem Obsidian-Neustart.
-- **Ein bereits offener View des eigenen Typs** hält nach dem Reload womöglich noch die alte
-  Klasse. Im Zweifel in der `.base` einmal auf einen anderen View und zurück schalten.
-  Voraussetzung dafür, dass Hot-Reload überhaupt sauber funktioniert, ist ein ordentliches
-  `onunload()` — die `register*()`-Methoden von `Plugin` räumen selbst auf, alles andere
-  nicht.
-
-Devtools mit `Cmd+Alt+I`. esbuild schreibt im Dev-Build inline Sourcemaps, Breakpoints
-landen also in `.ts`.
-
-## Testdaten im Dev-Vault
+## The loop
 
 ```sh
-node scripts/seed-dev-vault.mjs                              # 120 Notizen + Dev.base
-node scripts/seed-dev-vault.mjs ~/Git/obsidian-dev-vault 600 # Lastfall
+npm run dev     # esbuild in watch mode, src/main.ts -> main.js
 ```
 
-Bewusst **synthetisch statt kopiert**. Was hier zählt, ist die Streuung der Notizlängen —
-daran entscheidet sich, ob die `file.size`-Schätzung trägt. Das Skript erzeugt leere
-Notizen, Einzeiler, mittlere und lange, dazu `## Fazit`-Abschnitte und Block-IDs, damit sich
-alle Selektoren durchprobieren lassen. Eine leere Karte soll leer aussehen, nicht kaputt.
+Save → esbuild rebuilds → hot-reload notices the changed `main.js` and switches the plugin off
+and on again after about 0.75 s. No restart, no clicking through settings.
 
-Falls doch echte Notizen: immer eine **Kopie** eines Ausschnitts, nie ein Symlink auf den
-Produktivvault. Sonst schreibt ein Fehler im Plugin in den Vault, der auto-committet wird.
+Hot-reload recognises the plugins it should watch by a `.git` folder **or** a `.hotreload` file
+in the plugin directory. Through the symlink `.git` is visible, so it should kick in by
+itself; if it does not, `touch .hotreload` in the repo (and add it to `.gitignore`).
 
-## Testen ohne Obsidian
+Two things break the loop:
 
-`selector.ts` importiert nichts aus `obsidian` — Selektoren parsen, Frontmatter abschneiden,
-Abschnitt herausschneiden. Das ist die Logik mit den meisten Sonderfällen und läuft in
-`node --test` bzw. Vitest ohne Obsidian.
+- **Changes to `manifest.json`** only take effect after restarting Obsidian.
+- **A view of your own type that is already open** may still be holding the old class after the
+  reload. When in doubt, switch to another view in the `.base` and back. The precondition for
+  hot-reload working cleanly at all is a proper `onunload()` — the `register*()` methods of
+  `Plugin` clean up after themselves, nothing else does.
 
-Die Faustregel für den Alltag: **Sonderfälle im Test, Optik im Dev-Vault.** Wer
-Selektor-Randfälle im laufenden Obsidian durchprobiert, verliert die meiste Zeit.
+Devtools with `Cmd+Alt+I`. In the dev build esbuild writes inline source maps, so breakpoints
+land in `.ts`.
 
-Was Tests brauchen: `CachedMetadata`-Fixtures (`frontmatterPosition`, `headings[]`,
-`sections[]`) — die kann man aus der Devtools-Konsole des Dev-Vaults abgreifen
-(`app.metadataCache.getFileCache(app.workspace.getActiveFile())`) und als JSON ablegen.
+## Test data in the dev vault
 
-## Veröffentlichen
+```sh
+node scripts/seed-dev-vault.mjs                              # 120 notes + Dev.base
+node scripts/seed-dev-vault.mjs ~/Git/obsidian-dev-vault 600 # the load case
+```
 
-1. `npm version patch|minor` — das mitgelieferte `version-bump.mjs` schreibt die neue Version
-   in `manifest.json` und trägt sie samt `minAppVersion` in `versions.json` nach.
-2. Tag pushen. Ein GitHub-Actions-Workflow (im Template enthalten) baut und hängt
-   `main.js`, `manifest.json` und `styles.css` an das Release.
-3. **Im echten Vault installieren über BRAT**, nicht per Symlink. Der Produktivvault soll
-   nur fertige Releases sehen — sonst hängt er an einem halbfertigen Build.
-4. Erst wenn es sich bewährt: PR gegen `obsidianmd/obsidian-releases` für den
-   Community-Katalog.
+Deliberately **synthetic rather than copied**. What matters here is the spread of note lengths
+— that is what decides whether the `file.size` estimate holds up. The script produces empty
+notes, one-liners, medium and long ones, plus `## Fazit` sections and block IDs, so that every
+selector can be tried out. An empty card should look empty, not broken.
 
-## Reihenfolge der ersten Sitzungen
+If real notes after all: always a **copy** of a slice, never a symlink to the production vault.
+Otherwise a bug in the plugin writes into the vault, and that gets auto-committed.
 
-1. Setup wie oben, Plugin registriert einen leeren View, der "hello" rendert. Beweist die
-   ganze Kette inklusive Hot-Reload.
-2. `selector.ts` + Tests. Ohne Obsidian, deshalb schnell.
-3. Karten mit `file.name` + Cover `:` — die erste echte Ansicht.
+## Testing without Obsidian
 
-Ab hier gilt der Plan in [plan-content-cards.md](plan-content-cards.md).
+`selector.ts` imports nothing from `obsidian` — parse selectors, cut off frontmatter, slice out
+a section. That is the logic with the most edge cases, and it runs under `node --test` (or
+Vitest) without Obsidian.
+
+The rule of thumb for day-to-day work: **edge cases in tests, appearance in the dev vault.**
+Trying selector edge cases in a running Obsidian wastes most of the time.
+
+What tests need: `CachedMetadata` fixtures (`frontmatterPosition`, `headings[]`, `sections[]`)
+— you can grab those from the dev vault's devtools console
+(`app.metadataCache.getFileCache(app.workspace.getActiveFile())`) and store them as JSON.
+
+## Releasing
+
+1. `npm version patch|minor` — the bundled `version-bump.mjs` writes the new version into
+   `manifest.json` and records it together with `minAppVersion` in `versions.json`.
+2. Push the tag. A GitHub Actions workflow (included in the template) builds and attaches
+   `main.js`, `manifest.json` and `styles.css` to the release.
+3. **Install into the real vault via BRAT**, not via a symlink. The production vault should
+   only ever see finished releases — otherwise it hangs off a half-finished build.
+4. Only once it has proved itself: a PR against `obsidianmd/obsidian-releases` for the
+   community catalogue.
+
+## Order of the first sessions
+
+1. Setup as above, the plugin registers an empty view that renders "hello". Proves the whole
+   chain including hot-reload.
+2. `selector.ts` plus tests. No Obsidian, hence quick.
+3. Cards with `file.name` and cover `:` — the first real view.
+
+From here on the plan in [plan-content-cards.md](plan-content-cards.md) applies.

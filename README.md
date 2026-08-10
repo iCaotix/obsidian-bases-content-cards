@@ -93,8 +93,6 @@ symlink, hot reload, releasing).
 | [docs/plan-content-cards.md](docs/plan-content-cards.md) | Design and implementation order |
 | [docs/dev-workflow.md](docs/dev-workflow.md) | Repo layout and day-to-day workflow |
 
-The docs are in German; the code and this README are in English.
-
 ## Status
 
 Early. The view renders, sizes and fills cards; the option surface is in place. Not yet

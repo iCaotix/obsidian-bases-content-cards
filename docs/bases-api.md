@@ -1,122 +1,120 @@
-# Bases-API — Faktenlage
+# The Bases API — what is actually there
 
-Stand: 2026-08-10. Geprüft gegen `obsidian.d.ts` (Branch `master`, obsidianmd/obsidian-api),
-die Entwicklerdoku und die Help-Seiten. Lokal installiert: **Obsidian 1.13.4** — alles unten
-Genannte (`@since 1.10.0`) ist damit verfügbar.
+As of 2026-08-10. Checked against `obsidian.d.ts` (branch `master`, obsidianmd/obsidian-api),
+the developer docs and the help pages. Installed locally: **Obsidian 1.13.4** — everything
+named below (`@since 1.10.0`) is available there.
 
-## 1. Der einzige Erweiterungspunkt ist der View-Typ
+## 1. The only extension point is the view type
 
-In der gesamten Plugin-API gibt es genau eine Bases-Registrierung:
+There is exactly one Bases registration in the whole plugin API:
 
 ```ts
 // Plugin
 registerBasesView(viewId: string, registration: BasesViewRegistration): boolean;
 
 interface BasesViewRegistration {
-    name: string;                 // Anzeigename im View-Umschalter
+    name: string;                 // display name in the view switcher
     icon: IconName;
     factory: BasesViewFactory;    // (controller, containerEl) => BasesView
     options?: (config: BasesViewConfig) => BasesAllOptions[];
 }
 ```
 
-Es gibt **kein** `registerBasesFunction`, **keine** Registrierung virtueller Properties und
-**keinen** Data-Source-Hook. Ein Plugin kann also weder eine neue Spalte in die eingebaute
-Tabelle einhängen noch eine eigene Formel-Funktion bereitstellen. Der Wunsch nach einer
-Funktions-API existiert als Forum-Thread, ist aber nicht umgesetzt
+There is **no** `registerBasesFunction`, **no** registration of virtual properties and **no**
+data-source hook. A plugin can therefore neither add a column to the built-in table nor
+supply a formula function of its own. The wish for a function API exists as a forum thread
+but has not been implemented
 (<https://forum.obsidian.md/t/bases-api-for-plugins-to-add-custom-functions/109612>).
 
-## 2. Was ein eigener View bekommt
+## 2. What a custom view gets
 
 ```ts
 abstract class BasesView extends Component {
     abstract type: string;
     app: App;
-    config: BasesViewConfig;          // Optionen + Reihenfolge + Sortierung
+    config: BasesViewConfig;          // options + order + sorting
     allProperties: BasesPropertyId[];
-    data: BasesQueryResult;           // wird bei jeder Änderung ERSETZT, nicht mutiert
-    abstract onDataUpdated(): void;   // einziger Render-Hook
-    createFileForView(baseFileName?, frontmatterProcessor?): Promise<void>;  // seit 1.10.2
+    data: BasesQueryResult;           // REPLACED on every change, not mutated
+    abstract onDataUpdated(): void;   // the only render hook
+    createFileForView(baseFileName?, frontmatterProcessor?): Promise<void>;  // since 1.10.2
 }
 
 class BasesEntry implements FormulaContext {
     file: TFile;
-    getValue(propertyId: BasesPropertyId): Value | null;   // synchron
+    getValue(propertyId: BasesPropertyId): Value | null;   // synchronous
 }
 
 class BasesQueryResult {
     data: BasesEntry[];
-    get groupedData(): BasesEntryGroup[];   // gefiltert, sortiert, gruppiert — fertig
+    get groupedData(): BasesEntryGroup[];   // filtered, sorted, grouped — ready to use
     get properties(): BasesPropertyId[];
     getSummaryValue(...): Value;
 }
 
 class BasesViewConfig {
-    get(key), set(key, value)            // eigene View-Optionen
+    get(key), set(key, value)            // the view's own options
     getAsPropertyId(key), getEvaluatedFormula(view, key)
-    getOrder(): BasesPropertyId[]        // sichtbare Spalten, vom Nutzer per Toolbar gesetzt
+    getOrder(): BasesPropertyId[]        // visible columns, set by the user via the toolbar
     getSort(), getDisplayName(propertyId)
 }
 
 type BasesPropertyId = `${'note' | 'formula' | 'file'}.${string}`;
 ```
 
-Wichtig für die Aufwandsschätzung: **Filter-, Sortier-, Gruppier- und Property-Auswahl-UI
-liefert Bases selbst über seine Toolbar.** Der View bekommt die Daten bereits gefiltert und
-sortiert. Selbst zu bauen ist nur das Rendering: Zellen, Kopfzeile, Spaltenbreiten,
-Inline-Editing.
+Important when estimating the work: **the UI for filtering, sorting, grouping and picking
+properties is supplied by Bases itself, through its toolbar.** The view receives the data
+already filtered and sorted. All that is left to build is the rendering: cells, header row,
+column widths, inline editing.
 
-`onDataUpdated()` ist synchron. Alles Asynchrone (Dateiinhalt lesen) muss über Cache +
-Nachrendern laufen.
+`onDataUpdated()` is synchronous. Anything asynchronous (reading file content) has to go
+through a cache plus a later repaint.
 
-## 3. Bases kann Notizinhalt nicht sehen
+## 3. Bases cannot see note content
 
-Verfügbare eingebaute Properties (Help → Bases syntax):
+Built-in properties (Help → Bases syntax):
 
 `file.name`, `file.path`, `file.folder`, `file.ext`, `file.size`, `file.ctime`, `file.mtime`,
 `file.tags`, `file.links`, `file.embeds`, `file.backlinks`, `file.properties`, `file.file`
 
-Es gibt **kein** `file.content` / `file.body` und keine Funktion, die Fließtext liest. Der
-Body einer Notiz ist für die Query-Engine schlicht nicht existent. Wer ihn braucht, muss ihn
-selbst über `vault.cachedRead(file)` holen.
+There is **no** `file.content` / `file.body` and no function that reads body text. As far as
+the query engine is concerned, the body of a note does not exist. Anyone who needs it has to
+fetch it themselves via `vault.cachedRead(file)`.
 
-Nützlich zum Adressieren von Abschnitten, ohne den Text zu parsen:
-`metadataCache.getFileCache(file)` liefert `frontmatterPosition`, `headings[]` und
-`sections[]` — jeweils mit Zeilen- und Offset-Angaben.
+Useful for addressing sections without parsing the text:
+`metadataCache.getFileCache(file)` returns `frontmatterPosition`, `headings[]` and
+`sections[]`, each with line and offset information.
 
-Zum Anzeigen: `MarkdownRenderer.render(app, markdown, el, sourcePath, component)`.
+For display: `MarkdownRenderer.render(app, markdown, el, sourcePath, component)`.
 
-## 4. Der Bilder-Vergleich aus der Idee
+## 4. The comparison with images
 
-Cards-View rendert Bilder aus einer Property ("gallery-like views with images"). Das ist aber
-kein generischer Mechanismus, den ein Plugin für andere Inhaltstypen mitbenutzen könnte —
-es ist Sonderlogik im eingebauten View. Die Analogie trägt als *UX-Vorbild*, nicht als
-technischer Weg.
+The Cards view renders images from a property ("gallery-like views with images"). That is not
+a generic mechanism a plugin could reuse for other content types — it is special-case logic
+inside the built-in view. The analogy holds as a *UX model*, not as a technical route.
 
-## 5. Export ist bereits eingebaut
+## 5. Export is already built in
 
-Bases hat pro View zwei Exportwege (Help → Bases views):
+Bases has two export paths per view (Help → Bases views):
 
-- **Copy to clipboard** — als Markdown-Tabelle bzw. für Tabellenkalkulationen
-- **CSV export** — speichert die aktuelle View als CSV
+- **Copy to clipboard** — as a Markdown table, or for spreadsheets
+- **CSV export** — saves the current view as CSV
 
-Beides manuell angestoßen. Was fehlt, ist ausschließlich das *automatische* Schreiben bei
-jeder Änderung.
+Both are triggered manually. The only thing missing is *automatic* writing on every change.
 
-## 6. Vorhandene Arbeiten
+## 6. Prior art
 
-| Projekt | Ansatz | Relevanz |
+| Project | Approach | Relevance |
 | --- | --- | --- |
-| [CodyBontecou/obsidian-bases-preview](https://github.com/codybontecou/obsidian-bases-preview) | **MutationObserver + DOM-Injektion** einer `<td>`-Spalte in die eingebaute Tabelle; liest per `vault.cachedRead()`, schneidet Frontmatter ab, optional nur ein Heading, kürzt auf N Zeichen | Macht praktisch genau Idee A — aber über den fragilen Weg. Belegt zugleich, dass es sauber nicht geht. |
-| [xiwcx/obsidian-bases-kanban](https://github.com/xiwcx/obsidian-bases-kanban) | echter `registerBasesView`-View (Kanban, Drag & Drop) | Referenzimplementierung für einen eigenen View-Typ |
-| [dsebastien/obsidian-life-tracker-base-view](https://github.com/dsebastien/obsidian-life-tracker-base-view) | eigener View + ausführliche Doku zum View-Bau | Zweite Referenz |
-| GoodBases | Sammlung zusätzlicher View-Typen | Referenz |
+| [CodyBontecou/obsidian-bases-preview](https://github.com/codybontecou/obsidian-bases-preview) | **MutationObserver + DOM injection** of a `<td>` column into the built-in table; reads via `vault.cachedRead()`, strips frontmatter, optionally a single heading, truncates to N characters | Does essentially idea A — but by the fragile route. At the same time it is evidence that there is no clean way. |
+| [xiwcx/obsidian-bases-kanban](https://github.com/xiwcx/obsidian-bases-kanban) | a real `registerBasesView` view (kanban, drag & drop) | Reference implementation for a custom view type |
+| [dsebastien/obsidian-life-tracker-base-view](https://github.com/dsebastien/obsidian-life-tracker-base-view) | custom view plus thorough documentation on building views | Second reference |
+| GoodBases | a collection of additional view types | Reference |
 
-Die DOM-Injektion hat die erwartbaren Nachteile: hängt am HTML-Aufbau von Bases, überlebt
-kein Re-Render zuverlässig, Spaltenbreite/-position sind nicht persistierbar, und sie greift
-in *jede* Tabelle ein statt in eine bewusst gewählte View.
+DOM injection has the drawbacks you would expect: it depends on the internal HTML of Bases,
+does not reliably survive a re-render, column width and position cannot be persisted, and it
+reaches into *every* table instead of one deliberately chosen view.
 
-## Quellen
+## Sources
 
 - <https://docs.obsidian.md/plugins/guides/bases-view>
 - <https://docs.obsidian.md/Reference/TypeScript+API/BasesViewRegistration>
