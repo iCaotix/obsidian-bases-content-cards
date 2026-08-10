@@ -44,10 +44,20 @@ function stepFromFileSize(bytes: number): SizeName {
 
 interface Card {
 	el: HTMLElement;
+	/** The window: sized by the card, so its height is the space on offer. */
 	coverEl: HTMLElement;
+	/** The text: sized by itself, so its height is the space required. */
+	bodyEl: HTMLElement;
 	file: TFile;
 	span: number;
 	filled: boolean;
+}
+
+/** One card's two heights, read before any of them are written back. */
+interface Measurement {
+	card: Card;
+	needed: number;
+	available: number;
 }
 
 interface RenderParams {
@@ -66,9 +76,12 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private readonly rootEl: HTMLElement;
 	private readonly cache: ContentCache;
 	private readonly observer: IntersectionObserver;
+	private readonly resizeObserver: ResizeObserver;
 	private readonly cardsByPath = new Map<string, Card>();
 	private readonly cardsByEl = new WeakMap<Element, Card>();
 	private params: RenderParams = defaultParams();
+	private fitHandle = 0;
+	private fittedWidth = 0;
 
 	constructor(controller: QueryController, parentEl: HTMLElement) {
 		super(controller);
@@ -89,6 +102,19 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			{ root: null, rootMargin: '200px' },
 		);
 
+		// How tall a card needs to be depends on how wide its column is: the same
+		// excerpt takes four lines in a narrow column and two in a wide one. The
+		// columns resize with the window, the sidebar and the pane, and a height
+		// measured at the old width is wrong in both directions afterwards — too
+		// tall once the column grew, too short once it shrank. So measure again.
+		this.resizeObserver = new ResizeObserver((entries) => {
+			const width = entries[entries.length - 1]?.contentRect.width ?? 0;
+			if (width === this.fittedWidth) return; // height-only change: nothing reflows
+			this.fittedWidth = width;
+			this.scheduleFit();
+		});
+		this.resizeObserver.observe(this.rootEl);
+
 		// A card painted before Obsidian finished indexing shows a cover built from
 		// an empty metadata cache. Repaint it once the cache catches up — this also
 		// covers a note being edited while the view is open.
@@ -106,6 +132,8 @@ export class ContentCardsView extends BasesView implements HoverParent {
 
 	override onunload(): void {
 		this.observer.disconnect();
+		this.resizeObserver.disconnect();
+		this.rootEl.ownerDocument.defaultView?.cancelAnimationFrame(this.fitHandle);
 		this.cache.clear();
 		super.onunload();
 	}
@@ -147,10 +175,12 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private renderCard(gridEl: HTMLElement, entry: BasesEntry, order: BasesPropertyId[]): void {
 		const file = entry.file;
 		const cardEl = gridEl.createDiv('bcc-card');
+		const coverEl = cardEl.createDiv('bcc-cover');
 
 		const card: Card = {
 			el: cardEl,
-			coverEl: cardEl.createDiv('bcc-cover'),
+			coverEl,
+			bodyEl: coverEl.createDiv('bcc-cover-body'),
 			file,
 			span: SIZE_STEPS.m,
 			filled: false,
@@ -252,27 +282,25 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		const cache = this.app.metadataCache.getFileCache(card.file);
 		const excerpt = truncate(resolveSelector(content, cache, this.selectorFor(card, selector)), maxLength);
 
-		card.coverEl.empty();
+		card.bodyEl.empty();
 		card.coverEl.removeClass('bcc-cover-loading');
+		card.bodyEl.toggleClass('bcc-cover-empty', excerpt === '');
 		card.filled = true;
 
 		if (excerpt === '') {
-			card.coverEl.addClass('bcc-cover-empty');
-			this.adjustSpan(card);
+			this.scheduleFit();
 			return;
 		}
 
-		card.coverEl.removeClass('bcc-cover-empty');
-
 		if (markdown) {
-			void MarkdownRenderer.render(this.app, excerpt, card.coverEl, card.file.path, this).then(() =>
-				this.adjustSpan(card),
+			void MarkdownRenderer.render(this.app, excerpt, card.bodyEl, card.file.path, this).then(() =>
+				this.scheduleFit(),
 			);
 			return;
 		}
 
-		card.coverEl.setText(stripMarkdown(excerpt));
-		this.adjustSpan(card);
+		card.bodyEl.setText(stripMarkdown(excerpt));
+		this.scheduleFit();
 	}
 
 	/** A note may override the view-wide selector through a property. */
@@ -287,34 +315,61 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	}
 
 	/**
-	 * The one correction pass. The file-size guess is close but not exact — this
-	 * trims the leftover, once per card, instead of letting every load reflow the
-	 * grid. Differences under two rows are left alone; they are not worth a jump.
+	 * Correcting the file-size guess, and the answer to a resize, are the same
+	 * job: measure, then span what the text needs. Cards arrive in batches — one
+	 * IntersectionObserver callback fills a screenful — so the pass is deferred
+	 * to the next frame and covers every card at once, rather than reflowing the
+	 * grid once per arriving note.
 	 */
-	private adjustSpan(card: Card): void {
-		if (!this.params.uniform) {
-			const overflowRows = Math.round((card.coverEl.scrollHeight - card.coverEl.clientHeight) / ROW_HEIGHT);
+	private scheduleFit(): void {
+		if (this.fitHandle !== 0) return;
 
-			if (Math.abs(overflowRows) >= 2) {
-				const next = Math.min(this.params.maxSpan, Math.max(SIZE_STEPS.s, card.span + overflowRows));
-				if (next !== card.span) this.setSpan(card, next);
-			}
+		// The card's own window, so this still works when the view is in a popout.
+		const win = this.rootEl.ownerDocument.defaultView;
+		if (!win) return;
+
+		this.fitHandle = win.requestAnimationFrame(() => {
+			this.fitHandle = 0;
+			this.fitAll();
+		});
+	}
+
+	/** Read every height first, then write every span: interleaving the two forces a layout per card. */
+	private fitAll(): void {
+		const measurements: Measurement[] = [];
+
+		for (const card of this.cardsByPath.values()) {
+			if (!card.filled) continue;
+			measurements.push({ card, needed: card.bodyEl.offsetHeight, available: card.coverEl.clientHeight });
 		}
 
-		this.markClipped(card);
+		for (const measurement of measurements) this.fit(measurement);
 	}
 
 	/**
-	 * The fade at the bottom of a cover should mean "there is more". Without a
-	 * height limit a card usually shows everything, and fading text that is
-	 * complete just looks like a rendering fault — so the fade is conditional.
+	 * `available` is what the card currently grants its cover, `needed` what the
+	 * text wants — an absolute pair, not a delta from the last pass, so repeating
+	 * this at a new width converges in one go and can shrink a card as readily as
+	 * it grows one. Rows are granted by rounding up: half a row of slack looks
+	 * like nothing, half a row of missing text looks like a bug.
 	 */
-	private markClipped(card: Card): void {
-		// The card's own window, so this still works when the view is in a popout.
-		card.el.ownerDocument.defaultView?.requestAnimationFrame(() => {
-			const clipped = card.coverEl.scrollHeight > card.coverEl.clientHeight + 2;
-			card.coverEl.toggleClass('bcc-cover-clipped', clipped);
-		});
+	private fit({ card, needed, available }: Measurement): void {
+		let granted = available;
+
+		if (!this.params.uniform) {
+			const deltaRows = Math.ceil((needed - available) / ROW_HEIGHT);
+			const next = Math.min(this.params.maxSpan, Math.max(SIZE_STEPS.s, card.span + deltaRows));
+
+			if (next !== card.span) {
+				granted += (next - card.span) * ROW_HEIGHT;
+				this.setSpan(card, next);
+			}
+		}
+
+		// The fade at the bottom should mean "there is more", so it appears only
+		// where the card was actually capped — by the maximum height or by uniform
+		// heights. Fading out text that is complete just looks like a fault.
+		card.coverEl.toggleClass('bcc-cover-clipped', needed > granted + 1);
 	}
 }
 

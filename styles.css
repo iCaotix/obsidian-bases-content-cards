@@ -46,9 +46,24 @@
 	box-shadow: var(--shadow-s);
 }
 
+/*
+ * The window the cover is seen through. It is sized by the card, so its
+ * clientHeight is the space a card grants its cover — never the space the text
+ * wants. overflow:hidden is also what lets it shrink below its content
+ * (it zeroes the flex item's automatic minimum size).
+ */
 .bcc-cover {
 	flex: 1 1 auto;
+	min-height: 0;
 	overflow: hidden;
+}
+
+/*
+ * The text itself, and everything that decides how tall it is — padding
+ * included, so that offsetHeight alone answers "how much room does this cover
+ * need?". Nothing here may depend on the height of .bcc-cover.
+ */
+.bcc-cover-body {
 	padding: var(--size-4-3);
 	font-size: var(--font-ui-small);
 	line-height: var(--line-height-tight);
@@ -72,7 +87,7 @@
 	animation: bcc-shimmer 1.4s ease-in-out infinite;
 }
 
-.bcc-cover-empty::after {
+.bcc-cover-body.bcc-cover-empty::after {
 	content: 'Empty note';
 	color: var(--text-faint);
 	font-style: italic;

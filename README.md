@@ -30,7 +30,8 @@ Requires Obsidian 1.10.0 or later (the Bases view API).
 - **Content as cover.** Whole body, a named section (`#Fazit`), or a block (`^abc123`).
 - **Cards sized to their content.** Height comes from the note's file size *before* anything
   is read, so cards claim the right space up front and the grid does not jump as text
-  arrives. One correction pass fixes the leftover.
+  arrives. Once the text is there the card is measured and fitted to it — and measured again
+  whenever the columns change width.
 - **Everything else stays Bases.** Filters, sorting, grouping and which properties appear
   under the cover all come from the normal Bases toolbar.
 - **Click anywhere on a card** to open its note; Cmd-click or middle click opens a new tab.
