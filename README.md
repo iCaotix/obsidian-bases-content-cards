@@ -47,7 +47,7 @@ Set per view, in the Bases view config:
 | Cover length | Characters before truncation (default 300) |
 | Render markdown | Off by default — plain text is faster and reads fine at excerpt size |
 | Card height | Fit to content, or uniform |
-| Maximum card height | Keeps one long note from eating a whole column |
+| Maximum card height | Small…extra large, or unlimited — a card then grows to fit its whole cover |
 
 Line ranges are supported but discouraged: they silently point somewhere else as soon as a
 note is edited above them. Headings and block IDs survive editing.

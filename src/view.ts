@@ -27,6 +27,9 @@ const ROW_HEIGHT = 8;
 const SIZE_STEPS = { s: 20, m: 30, l: 42, xl: 56 } as const;
 export type SizeName = keyof typeof SIZE_STEPS;
 
+/** Maximum-height setting that lets a card grow to whatever its cover needs. */
+export const UNLIMITED = 'unlimited';
+
 /**
  * Byte thresholds for the initial height guess. `file.stat.size` is available
  * without touching the disk, which is the whole point: a card claims correctly
@@ -129,6 +132,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 
 	private readParams(): RenderParams {
 		const maxSize = asString(this.config.get('maxSize'), 'l');
+		const maxSpan = maxSize === UNLIMITED ? Number.POSITIVE_INFINITY : SIZE_STEPS[asSizeName(maxSize)];
 
 		return {
 			selector: parseSelector(asString(this.config.get('coverSelector'), ':')) ?? { kind: 'body' },
@@ -136,7 +140,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			maxLength: asNumber(this.config.get('maxLength'), 300),
 			markdown: this.config.get('renderMarkdown') === true,
 			uniform: this.config.get('cardSize') === 'uniform',
-			maxSpan: isSizeName(maxSize) ? SIZE_STEPS[maxSize] : SIZE_STEPS.l,
+			maxSpan,
 		};
 	}
 
@@ -288,13 +292,29 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 * grid. Differences under two rows are left alone; they are not worth a jump.
 	 */
 	private adjustSpan(card: Card): void {
-		if (this.params.uniform) return;
+		if (!this.params.uniform) {
+			const overflowRows = Math.round((card.coverEl.scrollHeight - card.coverEl.clientHeight) / ROW_HEIGHT);
 
-		const overflowRows = Math.round((card.coverEl.scrollHeight - card.coverEl.clientHeight) / ROW_HEIGHT);
-		if (Math.abs(overflowRows) < 2) return;
+			if (Math.abs(overflowRows) >= 2) {
+				const next = Math.min(this.params.maxSpan, Math.max(SIZE_STEPS.s, card.span + overflowRows));
+				if (next !== card.span) this.setSpan(card, next);
+			}
+		}
 
-		const next = Math.min(this.params.maxSpan, Math.max(SIZE_STEPS.s, card.span + overflowRows));
-		if (next !== card.span) this.setSpan(card, next);
+		this.markClipped(card);
+	}
+
+	/**
+	 * The fade at the bottom of a cover should mean "there is more". Without a
+	 * height limit a card usually shows everything, and fading text that is
+	 * complete just looks like a rendering fault — so the fade is conditional.
+	 */
+	private markClipped(card: Card): void {
+		// The card's own window, so this still works when the view is in a popout.
+		card.el.ownerDocument.defaultView?.requestAnimationFrame(() => {
+			const clipped = card.coverEl.scrollHeight > card.coverEl.clientHeight + 2;
+			card.coverEl.toggleClass('bcc-cover-clipped', clipped);
+		});
 	}
 }
 
@@ -307,8 +327,8 @@ function asNumber(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function isSizeName(value: string): value is SizeName {
-	return value in SIZE_STEPS;
+function asSizeName(value: string): SizeName {
+	return value in SIZE_STEPS ? (value as SizeName) : 'l';
 }
 
 function defaultParams(): RenderParams {

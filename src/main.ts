@@ -57,6 +57,7 @@ export default class ContentCardsPlugin extends Plugin {
 						m: 'Medium',
 						l: 'Large',
 						xl: 'Extra large',
+						unlimited: 'Unlimited',
 					},
 				},
 			],

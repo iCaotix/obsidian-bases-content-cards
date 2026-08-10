@@ -63,8 +63,13 @@ zuschneiden, anzeigen.
 - `cardSize` — `auto` (Default, Höhe je Karte nach Inhaltsmenge) | `uniform` (alle gleich).
 - `sizeProperty` (optional) — Notiz-Property, die die Kartengröße pro Notiz erzwingt
   (`s` | `m` | `l` | `xl`).
-- `maxSpan` — Obergrenze in Rasterstufen, damit eine lange Notiz nicht die halbe Spalte
-  belegt. Default `l`.
+- `maxSize` — Obergrenze in Rasterstufen, damit eine lange Notiz nicht die halbe Spalte
+  belegt. Default `l`. Zusätzlich `unlimited`: die Karte wächst dann, bis das ganze Cover
+  hineinpasst. In der Praxis begrenzt `maxLength` (Default 300 Zeichen) die Höhe ohnehin —
+  wer wirklich lange Karten will, muss beides hochsetzen.
+  Der Verlauf am unteren Rand erscheint nur noch, wenn tatsächlich etwas abgeschnitten ist;
+  bei `unlimited` ist das meist nicht der Fall, und verblassender vollständiger Text sähe
+  nach Fehler aus.
 
 Welche Properties unter dem Cover erscheinen und in welcher Reihenfolge, bestimmt weiter
 `config.getOrder()`, also der Property-Picker der Toolbar. Dafür ist keine eigene Option

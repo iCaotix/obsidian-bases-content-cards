@@ -54,7 +54,10 @@
 	line-height: var(--line-height-tight);
 	color: var(--text-normal);
 	white-space: pre-wrap;
-	/* Fade rather than a hard cut, so a clipped cover reads as "there is more". */
+}
+
+/* Fade rather than a hard cut — but only when something is actually cut off. */
+.bcc-cover-clipped {
 	mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
