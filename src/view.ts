@@ -16,7 +16,11 @@ import { parseSelector, resolveSelector, stripMarkdown, truncate, type Selector 
 
 export const CONTENT_CARDS_VIEW = 'content-cards';
 
-/** Grid row height in px. Must match --bcc-row-height in styles.css. */
+/**
+ * Grid row height in px. Must match --bcc-row-height in styles.css, where row-gap
+ * is deliberately 0 — any row gap would be inserted between every row of a span
+ * and multiply the card's reserved height.
+ */
 const ROW_HEIGHT = 8;
 
 /** Card heights in grid rows. */
@@ -81,6 +85,20 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			},
 			{ root: null, rootMargin: '200px' },
 		);
+
+		// A card painted before Obsidian finished indexing shows a cover built from
+		// an empty metadata cache. Repaint it once the cache catches up — this also
+		// covers a note being edited while the view is open.
+		this.registerEvent(this.app.metadataCache.on('changed', (file) => this.repaint(file.path)));
+	}
+
+	private repaint(path: string): void {
+		const card = this.cardsByPath.get(path);
+		if (!card) return;
+
+		this.cache.invalidate(path);
+		card.filled = false;
+		this.cache.request(card.file);
 	}
 
 	override onunload(): void {

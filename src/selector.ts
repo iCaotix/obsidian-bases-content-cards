@@ -54,7 +54,7 @@ export function resolveSelector(content: string, cache: CachedMetadata | null, s
 
 	switch (selector.kind) {
 		case 'body':
-			return join(lines, bodyStart(cache), lines.length - 1);
+			return join(lines, bodyStart(cache, lines), lines.length - 1);
 		case 'heading':
 			return resolveHeading(lines, cache, selector.name);
 		case 'block':
@@ -67,10 +67,30 @@ export function resolveSelector(content: string, cache: CachedMetadata | null, s
 	}
 }
 
-/** First line after the frontmatter block, or 0 when there is none. */
-export function bodyStart(cache: CachedMetadata | null): number {
+/**
+ * First line after the frontmatter block, or 0 when there is none.
+ *
+ * The metadata cache is the good answer, but it is not always there: a card can
+ * be painted before Obsidian has indexed that file, and then `getFileCache()`
+ * reports nothing at all. Falling back to the text itself keeps frontmatter out
+ * of the cover either way.
+ */
+export function bodyStart(cache: CachedMetadata | null, lines: string[] = []): number {
 	const position = cache?.frontmatterPosition;
-	return position ? position.end.line + 1 : 0;
+	if (position) return position.end.line + 1;
+	return frontmatterEnd(lines);
+}
+
+function frontmatterEnd(lines: string[]): number {
+	if (lines[0]?.trim() !== '---') return 0;
+
+	for (let index = 1; index < lines.length; index++) {
+		const line = lines[index]?.trim();
+		if (line === '---' || line === '...') return index + 1;
+	}
+
+	// Unterminated: not frontmatter after all, so show it rather than swallow the note.
+	return 0;
 }
 
 function resolveHeading(lines: string[], cache: CachedMetadata | null, name: string): string {

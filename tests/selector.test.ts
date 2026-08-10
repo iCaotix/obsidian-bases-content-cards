@@ -75,6 +75,25 @@ describe('resolveSelector — body', () => {
 	test('bodyStart is 0 without frontmatter', () => {
 		assert.equal(bodyStart(null), 0);
 	});
+
+	test('strips frontmatter from the text when the cache is cold', () => {
+		// getFileCache() returns nothing for a file Obsidian has not indexed yet.
+		assert.equal(resolveSelector(content, null, { kind: 'body' }), 'First line.\nSecond line.');
+	});
+
+	test('closing fence may be "..."', () => {
+		const dotted = ['---', 'tags: [a]', '...', 'Body.'].join('\n');
+		assert.equal(resolveSelector(dotted, null, { kind: 'body' }), 'Body.');
+	});
+
+	test('an unterminated fence is shown rather than swallowing the note', () => {
+		const broken = ['---', 'not really frontmatter', 'still going'].join('\n');
+		assert.equal(resolveSelector(broken, null, { kind: 'body' }), broken);
+	});
+
+	test('a leading horizontal rule is not mistaken for frontmatter', () => {
+		assert.equal(resolveSelector('Intro.\n\n---\n\nMore.', null, { kind: 'body' }), 'Intro.\n\n---\n\nMore.');
+	});
 });
 
 describe('resolveSelector — heading', () => {
