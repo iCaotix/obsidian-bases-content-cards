@@ -42,6 +42,9 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-floating-promises': 'off',
 			'obsidianmd/no-nodejs-modules': 'off',
+			// A test has no Obsidian to be `instanceof` anything from: its fixtures are
+			// hand-built objects typed against the real interfaces.
+			'obsidianmd/no-tfile-tfolder-cast': 'off',
 		},
 	},
 );

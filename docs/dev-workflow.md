@@ -118,8 +118,10 @@ Anything that imports `obsidian` only as a *type* runs under `node --test` witho
 region, moving match offsets into an excerpt, grading bytes into a row span, and what a tab
 remembers of a grid.
 
-Relative imports therefore carry their `.ts` extension: Node resolves the file, esbuild and
-`tsc` accept it, and no module is untestable merely because of how it was imported.
+Two things follow, and both are cheap to keep to. Relative imports carry their `.ts` extension,
+because Node resolves real files while esbuild and `tsc` accept either. And constructor
+parameter properties (`constructor(private readonly app: App)`) are written out as fields,
+because strip-only mode refuses them — it deletes types, it does not emit code.
 
 The rule of thumb for day-to-day work: **edge cases in tests, appearance in the dev vault.**
 Trying selector edge cases in a running Obsidian wastes most of the time.

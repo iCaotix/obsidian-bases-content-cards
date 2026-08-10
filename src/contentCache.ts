@@ -13,13 +13,17 @@ interface CacheEntry {
  * On a second render the text is already here, so nothing moves at all.
  */
 export class ContentCache {
-	private entries = new Map<string, CacheEntry>();
-	private pending = new Set<string>();
+	private readonly entries = new Map<string, CacheEntry>();
+	private readonly pending = new Set<string>();
+	private readonly app: App;
+	private readonly onLoaded: (path: string) => void;
 
-	constructor(
-		private readonly app: App,
-		private readonly onLoaded: (path: string) => void,
-	) {}
+	// Written out rather than declared as constructor parameters: Node's type
+	// stripping does not support those, and this module is covered by tests.
+	constructor(app: App, onLoaded: (path: string) => void) {
+		this.app = app;
+		this.onLoaded = onLoaded;
+	}
 
 	/** Null when the file has not been read yet, or the copy is older than the file. */
 	get(file: TFile): string | null {
