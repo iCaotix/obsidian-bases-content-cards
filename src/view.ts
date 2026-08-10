@@ -154,6 +154,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 
 		this.setSpan(card, this.initialSpan(file));
 		this.renderFooter(cardEl, entry, order);
+		this.makeOpenable(cardEl, file);
 
 		this.cardsByPath.set(file.path, card);
 		this.cardsByEl.set(cardEl, card);
@@ -177,15 +178,34 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		card.el.style.gridRow = `span ${span}`;
 	}
 
+	/**
+	 * The whole card opens its note — cover, title and properties alike. Two things
+	 * must still get through: links inside a markdown-rendered cover belong to
+	 * Obsidian, and a click that ends a text selection is not a click on the card.
+	 */
+	private makeOpenable(cardEl: HTMLElement, file: TFile): void {
+		const open = (evt: MouseEvent) => {
+			if (evt.button !== 0 && evt.button !== 1) return;
+
+			const link = (evt.target as HTMLElement).closest('a');
+			if (link && !link.hasClass('bcc-title')) return;
+
+			const selection = cardEl.ownerDocument.defaultView?.getSelection();
+			if (selection && !selection.isCollapsed && cardEl.contains(selection.anchorNode)) return;
+
+			evt.preventDefault();
+			// Middle click and Cmd-click both open in a new tab.
+			void this.app.workspace.openLinkText(file.path, '', Keymap.isModEvent(evt) || evt.button === 1);
+		};
+
+		cardEl.addEventListener('click', open);
+		cardEl.addEventListener('auxclick', open); // middle click does not fire 'click'
+	}
+
 	private renderFooter(cardEl: HTMLElement, entry: BasesEntry, order: BasesPropertyId[]): void {
 		const footerEl = cardEl.createDiv('bcc-footer');
 
 		const titleEl = footerEl.createEl('a', { cls: 'bcc-title', text: entry.file.basename });
-		titleEl.onClickEvent((evt: MouseEvent) => {
-			if (evt.button !== 0 && evt.button !== 1) return;
-			evt.preventDefault();
-			void this.app.workspace.openLinkText(entry.file.path, '', Keymap.isModEvent(evt));
-		});
 		titleEl.addEventListener('mouseover', (evt) => {
 			this.app.workspace.trigger('hover-link', {
 				event: evt,

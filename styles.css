@@ -31,6 +31,7 @@
 .bcc-card {
 	display: flex;
 	flex-direction: column;
+	cursor: pointer;
 	/* The vertical gutter, see the row-gap note above. Stretching to the grid area
 	   subtracts this, so a card fills exactly the rows it spans. */
 	margin-bottom: var(--bcc-gutter);

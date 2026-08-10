@@ -33,6 +33,8 @@ Requires Obsidian 1.10.0 or later (the Bases view API).
   arrives. One correction pass fixes the leftover.
 - **Everything else stays Bases.** Filters, sorting, grouping and which properties appear
   under the cover all come from the normal Bases toolbar.
+- **Click anywhere on a card** to open its note; Cmd-click or middle click opens a new tab.
+  Links inside a markdown-rendered cover still go where they point.
 
 ## Options
 
