@@ -68,7 +68,26 @@
 	font-size: var(--font-ui-small);
 	line-height: var(--line-height-tight);
 	color: var(--text-normal);
+}
+
+/*
+ * Plain text keeps the note's own line breaks, because in plain text that is
+ * all a line break is. Rendered markdown must not: there the structure is
+ * already elements, and pre-wrap would render the leftover newline characters
+ * on top of it — one blank line in the note, two on the card.
+ */
+.bcc-cover-plain {
 	white-space: pre-wrap;
+}
+
+/* The outer blocks of rendered markdown bring their own margins, which inside a
+   cover just read as uneven padding. */
+.bcc-cover-body > :first-child {
+	margin-top: 0;
+}
+
+.bcc-cover-body > :last-child {
+	margin-bottom: 0;
 }
 
 /* Fade rather than a hard cut — but only when something is actually cut off. */

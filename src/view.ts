@@ -77,6 +77,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private readonly cache: ContentCache;
 	private readonly observer: IntersectionObserver;
 	private readonly resizeObserver: ResizeObserver;
+	private readonly contentObserver: ResizeObserver;
 	private readonly cardsByPath = new Map<string, Card>();
 	private readonly cardsByEl = new WeakMap<Element, Card>();
 	private params: RenderParams = defaultParams();
@@ -115,6 +116,15 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		});
 		this.resizeObserver.observe(this.rootEl);
 
+		// Rendered markdown does not finish when the renderer says it does. An
+		// <img> has no height until its file has loaded and decoded, and an embed
+		// is resolved from the vault a beat later still — so the height measured
+		// the moment `render()` resolves is the height of the text without them,
+		// and `overflow: hidden` would then cut the picture off for good. Watching
+		// the body catches every such late arrival, images included, without
+		// having to enumerate what they might be.
+		this.contentObserver = new ResizeObserver(() => this.scheduleFit());
+
 		// A card painted before Obsidian finished indexing shows a cover built from
 		// an empty metadata cache. Repaint it once the cache catches up — this also
 		// covers a note being edited while the view is open.
@@ -133,6 +143,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	override onunload(): void {
 		this.observer.disconnect();
 		this.resizeObserver.disconnect();
+		this.contentObserver.disconnect();
 		this.rootEl.ownerDocument.defaultView?.cancelAnimationFrame(this.fitHandle);
 		this.cache.clear();
 		super.onunload();
@@ -141,6 +152,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	public onDataUpdated(): void {
 		this.params = this.readParams();
 		this.observer.disconnect();
+		this.contentObserver.disconnect(); // the elements it holds are about to go
 		this.cardsByPath.clear();
 		this.rootEl.empty();
 
@@ -295,6 +307,10 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		card.bodyEl.empty();
 		card.coverEl.removeClass('bcc-cover-loading');
 		card.bodyEl.toggleClass('bcc-cover-empty', excerpt === '');
+		// Only plain text carries its line breaks as characters; in rendered
+		// markdown they are already elements, and honouring them twice would show
+		// every blank line in the note as two.
+		card.bodyEl.toggleClass('bcc-cover-plain', !markdown);
 		card.filled = true;
 
 		if (excerpt === '') {
@@ -303,6 +319,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		}
 
 		if (markdown) {
+			this.contentObserver.observe(card.bodyEl);
 			void MarkdownRenderer.render(this.app, excerpt, card.bodyEl, card.file.path, this).then(() =>
 				this.scheduleFit(),
 			);

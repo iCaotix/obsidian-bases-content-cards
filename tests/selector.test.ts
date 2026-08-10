@@ -181,6 +181,27 @@ describe('truncate', () => {
 	test('cuts hard when the word is longer than the budget', () => {
 		assert.equal(truncate('aaaaaaaaaaaaaaaaaaaa', 5), 'aaaaa…');
 	});
+
+	test('drops an embed the cut ran through', () => {
+		assert.equal(truncate('Intro text ![[Pasted image 20260810.png]]', 22), 'Intro text…');
+		assert.equal(truncate('Intro text [[Some Note]]', 18), 'Intro text…');
+		assert.equal(truncate('Intro text ![alt](https://example.com/a.png)', 26), 'Intro text…');
+		assert.equal(truncate('Intro text [label](https://example.com)', 26), 'Intro text…');
+	});
+
+	test('keeps links the cut did not reach into', () => {
+		assert.equal(truncate('See [[Some Note]] and then more words', 22), 'See [[Some Note]] and…');
+		assert.equal(truncate('See ![[a.png]] and then more words', 22), 'See ![[a.png]] and…');
+	});
+
+	test('leaves bracketed text that is not a link alone', () => {
+		assert.equal(truncate('- [ ] a task that runs on and on', 14), '- [ ] a task…');
+		assert.equal(truncate('Status [draft] and more words here', 20), 'Status [draft] and…');
+	});
+
+	test('an excerpt that was nothing but a cut embed comes back empty', () => {
+		assert.equal(truncate('![[Pasted image 20260810.png]]', 12), '');
+	});
 });
 
 describe('stripMarkdown', () => {

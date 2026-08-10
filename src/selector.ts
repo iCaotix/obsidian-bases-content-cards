@@ -134,9 +134,43 @@ export function truncate(text: string, maxLength: number): string {
 
 	const cut = text.slice(0, maxLength);
 	const lastSpace = cut.lastIndexOf(' ');
-	const kept = lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut;
+	const kept = dropDanglingLink(lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd();
 
-	return kept.trimEnd() + '…';
+	return kept === '' ? '' : kept + '…';
+}
+
+/**
+ * Removes a link or embed left half-written by the cut.
+ *
+ * A word boundary is not a markdown boundary: cutting inside `![[Pasted image
+ * 20260810.png]]` leaves `![[Pasted image`, which renders as exactly that —
+ * either as literal text in a plain cover (`stripMarkdown` only removes embeds
+ * that are closed) or as an unresolved link in a rendered one. A cover is an
+ * excerpt, so dropping the remains costs nothing.
+ *
+ * Only what is unambiguously broken goes. A bare `[` is ordinary text — `[draft]`
+ * and the `[ ]` of a task have to survive — so a single bracket is cut only once
+ * its URL half has been started and not finished.
+ */
+function dropDanglingLink(text: string): string {
+	const wiki = text.lastIndexOf('[[');
+	if (wiki !== -1 && !text.includes(']]', wiki)) return cutBefore(text, wiki);
+
+	const bracket = text.lastIndexOf('[');
+	if (bracket === -1 || (wiki !== -1 && bracket <= wiki + 1)) return text;
+
+	const rest = text.slice(bracket);
+	const isEmbed = bracket > 0 && text[bracket - 1] === '!';
+
+	if (/^\[[^\]]*\]\([^)]*$/.test(rest)) return cutBefore(text, bracket); // [text](half-a-url
+	if (isEmbed && !/^\[[^\]]*\]\([^)]*\)/.test(rest)) return cutBefore(text, bracket); // ![alt…
+
+	return text;
+}
+
+/** Cuts at `index`, taking the `!` of an embed with it. */
+function cutBefore(text: string, index: number): string {
+	return text.slice(0, index > 0 && text[index - 1] === '!' ? index - 1 : index);
 }
 
 /**
