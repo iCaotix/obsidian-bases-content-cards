@@ -52,6 +52,29 @@ To update, run the same three commands again and reload Obsidian.
   under the cover all come from the normal Bases toolbar.
 - **Click anywhere on a card** to open its note; Cmd-click or middle click opens a new tab.
   Links inside a markdown-rendered cover still go where they point.
+- **Search inside the notes.** The box above the grid matches the note body, not just its
+  name. Cards that miss are hidden, hits are highlighted, and a card whose hit lies past the
+  excerpt re-points its cover at the passage that matched.
+
+## Search
+
+Bases has a search of its own, in the toolbar, and it works on these cards already — but it
+can only see the properties the view is showing, because that is all Bases can see. The box
+in this view is the other half: it reads the body.
+
+The two compose. The toolbar narrows by name and properties, this one narrows further by
+content, and either works alone.
+
+Worth knowing:
+
+- It searches the **cover's** text — the whole body with the default `:` selector, or just
+  the section when the cover is `#Heading`. What the card is about is what you search.
+- It can only narrow what the base already returned. A note excluded by the base's filters
+  cannot be searched back in.
+- The first search reads every note in the base rather than only the visible ones. That is a
+  one-time cost per note, shared with the covers.
+- While searching, covers are plain text even with markdown rendering on: a highlight has to
+  go around a range of characters, and rendering scatters those across a tree.
 
 ## Options
 

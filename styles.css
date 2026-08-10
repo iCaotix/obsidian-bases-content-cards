@@ -3,9 +3,45 @@
 	--bcc-row-height: 8px;
 	--bcc-min-width: 240px;
 	--bcc-gutter: var(--size-4-3);
-	padding: var(--size-4-3);
-	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
+	min-height: 0;
+}
+
+/*
+ * Deliberately outside .bcc-results: that is the part a data update empties, and
+ * the search bar has to survive one without losing the cursor. It stays put
+ * while the cards scroll under it.
+ */
+.bcc-search {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-3) var(--size-4-3) 0;
+}
+
+.bcc-search .search-input-container {
+	flex: 1 1 auto;
+}
+
+.bcc-search-count {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.bcc-results {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-3);
+}
+
+.bcc-hidden,
+.bcc-card-hidden {
+	display: none;
 }
 
 .bcc-grid {
