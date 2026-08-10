@@ -25,6 +25,22 @@ see it.
 
 Requires Obsidian 1.10.0 or later (the Bases view API).
 
+## Install
+
+Not in the community catalogue yet, so install it by hand:
+
+```sh
+npm install
+npm run build
+npm run install-to-vault -- "/path/to/your/vault"
+```
+
+That copies `main.js`, `manifest.json` and `styles.css` into
+`<vault>/.obsidian/plugins/bases-content-cards/`. Enable **Bases Content Cards** under
+Settings → Community plugins, then add a **Content cards** view to any `.base`.
+
+To update, run the same three commands again and reload Obsidian.
+
 ## What it does
 
 - **Content as cover.** Whole body, a named section (`#Fazit`), or a block (`^abc123`).
@@ -96,5 +112,13 @@ symlink, hot reload, releasing).
 
 ## Status
 
-Early. The view renders, sizes and fills cards; the option surface is in place. Not yet
-released, not in the community catalogue.
+0.1.0 — ready to use in a real vault, not yet in the community catalogue. The view is
+read-only: it never writes to the vault.
+
+Known limits:
+
+- Non-markdown files in a base (attachments) show as cards with no cover. There is nothing to
+  read from them.
+- Cards do not slide up into the gap at the end of a row. That is the price of laying them
+  out with grid spans rather than JS — see [docs/plan-content-cards.md](docs/plan-content-cards.md).
+- `coverSource: auto` (a note's first image as the cover) is designed but not built.

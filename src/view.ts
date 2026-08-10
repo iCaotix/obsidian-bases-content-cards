@@ -193,6 +193,16 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.cardsByPath.set(file.path, card);
 		this.cardsByEl.set(cardEl, card);
 
+		// A base is not restricted to notes — attachments come through as entries
+		// too, and `cachedRead` on a PNG returns binary noise. There is nothing to
+		// read, so the card skips straight to its final, smallest state.
+		if (file.extension !== 'md') {
+			this.setSpan(card, Math.min(this.params.maxSpan, SIZE_STEPS.s));
+			card.bodyEl.addClass('bcc-cover-none');
+			card.filled = true;
+			return;
+		}
+
 		const cached = this.cache.get(file);
 		if (cached === null) {
 			card.coverEl.addClass('bcc-cover-loading');

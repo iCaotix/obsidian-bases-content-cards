@@ -128,12 +128,29 @@ What tests need: `CachedMetadata` fixtures (`frontmatterPosition`, `headings[]`,
 
 1. `npm version patch|minor` — the bundled `version-bump.mjs` writes the new version into
    `manifest.json` and records it together with `minAppVersion` in `versions.json`.
-2. Push the tag. A GitHub Actions workflow (included in the template) builds and attaches
-   `main.js`, `manifest.json` and `styles.css` to the release.
-3. **Install into the real vault via BRAT**, not via a symlink. The production vault should
-   only ever see finished releases — otherwise it hangs off a half-finished build.
-4. Only once it has proved itself: a PR against `obsidianmd/obsidian-releases` for the
+2. Push the tag.
+3. `npm run build`. A release is three files: `main.js`, `manifest.json`, `styles.css`.
+4. **Install into the real vault as a copy, not as a symlink.** The production vault should
+   only ever see builds you deliberately made — a symlink makes it track whatever is on disk,
+   and this vault auto-commits:
+
+   ```sh
+   npm run install-to-vault -- "$HOME/Git/Obsidian Vault"
+   ```
+
+   The script refuses a path with no `.obsidian` folder, refuses to write through a symlink,
+   and refuses to run before `npm run build`.
+
+5. Only once it has proved itself: a PR against `obsidianmd/obsidian-releases` for the
    community catalogue.
+
+Two things that do not work yet, and why they are not in the loop above:
+
+- `.github/workflows/release.yml` builds a draft GitHub release from a tag, but `origin` is a
+  self-hosted Forgejo instance, so nothing runs it. It is kept for the day the repo also lives
+  on GitHub; until then step 3 is done locally.
+- **BRAT is not an install route.** It installs from GitHub releases only. Hence the copy
+  script rather than the recommendation in the Obsidian docs.
 
 ## Order of the first sessions
 

@@ -87,10 +87,20 @@
 	animation: bcc-shimmer 1.4s ease-in-out infinite;
 }
 
-.bcc-cover-body.bcc-cover-empty::after {
-	content: 'Empty note';
+.bcc-cover-body.bcc-cover-empty::after,
+.bcc-cover-body.bcc-cover-none::after {
 	color: var(--text-faint);
 	font-style: italic;
+}
+
+.bcc-cover-body.bcc-cover-empty::after {
+	content: 'Empty note';
+}
+
+/* An attachment, not a note — there is no body to show, which is not the same
+   as a note whose body is empty. */
+.bcc-cover-body.bcc-cover-none::after {
+	content: 'No text content';
 }
 
 @keyframes bcc-shimmer {
