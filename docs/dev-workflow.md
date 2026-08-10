@@ -25,11 +25,17 @@ So: a second vault, e.g. `~/Git/obsidian-dev-vault/`.
 ```
 ~/Git/obsidian-bases-content-cards/        ← the git repo
 ├── src/
-│   ├── main.ts            registration, settings
-│   ├── view.ts            the BasesView
+│   ├── main.ts            registration
+│   ├── options.ts         what the Bases options panel offers
+│   ├── params.ts          reading those options back, span arithmetic
+│   ├── view.ts            the BasesView: observers, covers, fitting pass
+│   ├── cards.ts           a card's DOM and its click target
+│   ├── memory.ts          where the reader is, per tab
 │   ├── selector.ts        pure functions, no Obsidian import
+│   ├── search.ts          excerpt windows, no Obsidian import
+│   ├── tint.ts            the per-note hue
 │   └── contentCache.ts    cachedRead + mtime invalidation
-├── tests/selector.test.ts
+├── tests/                 one file per module, run by node --test
 ├── styles.css
 ├── manifest.json
 ├── versions.json
@@ -106,9 +112,14 @@ actually use. Otherwise a bug in the plugin writes into notes you cannot afford 
 
 ## Testing without Obsidian
 
-`selector.ts` imports nothing from `obsidian` — parse selectors, cut off frontmatter, slice out
-a section. That is the logic with the most edge cases, and it runs under `node --test` (or
-Vitest) without Obsidian.
+Anything that imports `obsidian` only as a *type* runs under `node --test` without Obsidian:
+`selector.ts` and `search.ts` (which import nothing from it at all), plus `params.ts`,
+`memory.ts` and `tint.ts`. That covers the arithmetic with the most edge cases — addressing a
+region, moving match offsets into an excerpt, grading bytes into a row span, and what a tab
+remembers of a grid.
+
+Relative imports therefore carry their `.ts` extension: Node resolves the file, esbuild and
+`tsc` accept it, and no module is untestable merely because of how it was imported.
 
 The rule of thumb for day-to-day work: **edge cases in tests, appearance in the dev vault.**
 Trying selector edge cases in a running Obsidian wastes most of the time.

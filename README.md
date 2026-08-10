@@ -136,13 +136,14 @@ cover: "#Summary"   # not  cover: #Summary
 ```sh
 npm install
 npm run dev     # esbuild watch → main.js
-npm test        # selector logic, runs in Node without Obsidian
+npm test        # the pure logic, runs in Node without Obsidian
 npm run build   # typecheck + production bundle
 npm run lint
 ```
 
-`src/selector.ts` has no Obsidian imports — the addressing logic, which has by far the most
-edge cases, is tested in plain Node. Edge cases in tests, appearance in the dev vault.
+`src/selector.ts` and `src/search.ts` have no Obsidian imports, and everything else that only
+needs its types — the option coercions, the span arithmetic, the per-tab memory — is tested in
+plain Node too. Edge cases in tests, appearance in the dev vault.
 
 See [docs/dev-workflow.md](docs/dev-workflow.md) for the full setup (separate dev vault,
 symlink, hot reload, releasing).
