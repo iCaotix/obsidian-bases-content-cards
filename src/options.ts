@@ -1,6 +1,6 @@
 import type { BasesAllOptions } from 'obsidian';
 
-import { UNLIMITED } from './params';
+import { UNLIMITED } from './params.ts';
 
 /** What the view shows in the Bases options panel. Read back in `readParams()`. */
 export function viewOptions(): BasesAllOptions[] {

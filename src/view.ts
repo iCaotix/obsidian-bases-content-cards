@@ -16,8 +16,8 @@ import {
 	type WorkspaceLeaf,
 } from 'obsidian';
 
-import { createCard, type Card, type CardHost } from './cards';
-import { ContentCache } from './contentCache';
+import { createCard, type Card, type CardHost } from './cards.ts';
+import { ContentCache } from './contentCache.ts';
 import {
 	basePathOf,
 	findLeaf,
@@ -28,7 +28,7 @@ import {
 	type Anchor,
 	type Place,
 	type ViewMemory,
-} from './memory';
+} from './memory.ts';
 import {
 	ROW_HEIGHT,
 	SIZE_STEPS,
@@ -38,9 +38,9 @@ import {
 	readParams,
 	stepFromFileSize,
 	type RenderParams,
-} from './params';
-import { excerptAround } from './search';
-import { parseSelector, resolveSelector, stripMarkdown, truncate, type Selector } from './selector';
+} from './params.ts';
+import { excerptAround } from './search.ts';
+import { parseSelector, resolveSelector, stripMarkdown, truncate, type Selector } from './selector.ts';
 
 export const CONTENT_CARDS_VIEW = 'content-cards';
 

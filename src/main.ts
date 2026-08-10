@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 
-import { viewOptions } from './options';
-import { CONTENT_CARDS_VIEW, ContentCardsView } from './view';
+import { viewOptions } from './options.ts';
+import { CONTENT_CARDS_VIEW, ContentCardsView } from './view.ts';
 
 export default class ContentCardsPlugin extends Plugin {
 	async onload(): Promise<void> {

@@ -1,6 +1,6 @@
 import type { BasesPropertyId, BasesViewConfig } from 'obsidian';
 
-import { parseSelector, type Selector } from './selector';
+import { parseSelector, type Selector } from './selector.ts';
 
 /**
  * Grid row height in px. Must match --bcc-row-height in styles.css, where row-gap

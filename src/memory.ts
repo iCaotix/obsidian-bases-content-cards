@@ -1,6 +1,6 @@
 import type { App, WorkspaceLeaf } from 'obsidian';
 
-import type { Card } from './cards';
+import type { Card } from './cards.ts';
 
 /**
  * Where the reader is, as a note and an offset rather than a pixel: every height
