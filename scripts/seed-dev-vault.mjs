@@ -66,7 +66,8 @@ function noteFor(index) {
 		'---',
 		`tags: [${tags.join(', ')}]`,
 		`created: ${created}`,
-		`cover: ${index % 8 === 0 ? '#Fazit' : ':'}`,
+		// Quoted on purpose: bare `:` is invalid YAML and a bare `#` starts a comment.
+		`cover: "${index % 8 === 0 ? '#Fazit' : ':'}"`,
 		'---',
 		'',
 		bodyFor(index),

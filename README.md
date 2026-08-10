@@ -50,6 +50,22 @@ Set per view, in the Bases view config:
 Line ranges are supported but discouraged: they silently point somewhere else as soon as a
 note is edited above them. Headings and block IDs survive editing.
 
+**Quote the value in frontmatter.** Selectors collide with YAML syntax — a bare `:` is
+invalid, and a bare `#` starts a comment, so the property ends up empty and the view falls
+back to its own setting:
+
+```yaml
+---
+cover: ":"        # not  cover: :
+---
+```
+
+```yaml
+---
+cover: "#Fazit"   # not  cover: #Fazit
+---
+```
+
 ## Development
 
 ```sh

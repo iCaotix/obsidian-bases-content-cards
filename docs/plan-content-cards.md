@@ -52,6 +52,10 @@ zuschneiden, anzeigen.
   `#Überschrift`, `^block-id`.
 - `selectorProperty` (optional) — Notiz-Property, die `coverSelector` pro Notiz überschreibt.
   Der Gedanke aus der ursprünglichen Idee bleibt erhalten, ohne Pflicht zu werden.
+  **Im Frontmatter muss der Wert in Anführungszeichen stehen** — ein nacktes `:` ist
+  ungültiges YAML, ein nacktes `#` beginnt einen Kommentar. Also `cover: ":"` und
+  `cover: "#Fazit"`. Ohne Quotes ist die Property leer und der View fällt auf seine
+  eigene Einstellung zurück; das ist gutartig, aber unsichtbar.
 - `coverSource` — `content` | `image` | `auto`. Bei `auto`: erstes Embed der Notiz als Bild,
   sonst Text. `file.embeds` liefert die Kandidaten ohne eigenen Parser.
 - `maxLength` — Zeichen, Default 300.
