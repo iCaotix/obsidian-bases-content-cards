@@ -1,12 +1,9 @@
 import type { CachedMetadata } from 'obsidian';
 
 /**
- * Which part of a note a cover shows.
- *
- * Deliberately small: `body` and `heading` cover almost every real use, `block`
- * exists because Obsidian already has stable block addresses, and `lines` is the
- * escape hatch. Line numbers shift silently when a note is edited above them, so
- * they are documented as a last resort rather than a feature.
+ * Which part of a note a cover shows. `body` and `heading` cover almost every real
+ * use; `lines` is the escape hatch, and a brittle one — line numbers shift silently
+ * when a note is edited above them, so the README documents them as a last resort.
  */
 export type Selector =
 	| { kind: 'body' }
@@ -70,10 +67,9 @@ export function resolveSelector(content: string, cache: CachedMetadata | null, s
 /**
  * First line after the frontmatter block, or 0 when there is none.
  *
- * The metadata cache is the good answer, but it is not always there: a card can
- * be painted before Obsidian has indexed that file, and then `getFileCache()`
- * reports nothing at all. Falling back to the text itself keeps frontmatter out
- * of the cover either way.
+ * The metadata cache is the good answer, but a card can be painted before Obsidian
+ * has indexed that file, and then `getFileCache()` reports nothing at all. Falling
+ * back to the text keeps frontmatter out of the cover either way.
  */
 export function bodyStart(cache: CachedMetadata | null, lines: string[] = []): number {
 	const position = cache?.frontmatterPosition;
@@ -143,10 +139,9 @@ export function truncate(text: string, maxLength: number): string {
  * Removes a link or embed left half-written by the cut.
  *
  * A word boundary is not a markdown boundary: cutting inside `![[Pasted image
- * 20260810.png]]` leaves `![[Pasted image`, which renders as exactly that —
- * either as literal text in a plain cover (`stripMarkdown` only removes embeds
- * that are closed) or as an unresolved link in a rendered one. A cover is an
- * excerpt, so dropping the remains costs nothing.
+ * 20260810.png]]` leaves `![[Pasted image`, which shows as literal text in a plain
+ * cover and as an unresolved link in a rendered one. A cover is an excerpt, so
+ * dropping the remains costs nothing.
  *
  * Only what is unambiguously broken goes. A bare `[` is ordinary text — `[draft]`
  * and the `[ ]` of a task have to survive — so a single bracket is cut only once

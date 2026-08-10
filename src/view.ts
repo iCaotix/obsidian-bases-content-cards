@@ -46,9 +46,9 @@ export const CONTENT_CARDS_VIEW = 'content-cards';
 
 /**
  * How long to keep trying to put the reader back among the results of a restored
- * search. It takes as many attempts as it takes for the notes to be read and the
- * misses to be hidden, so it cannot be a number of tries — but a note that never
- * arrives must not leave a view re-scrolling itself forever.
+ * search. It takes as many attempts as the notes take to arrive, so it cannot be a
+ * number of tries — but a note that never arrives must not leave a view
+ * re-scrolling itself forever.
  */
 const RESTORE_TIMEOUT = 5000;
 
@@ -91,11 +91,10 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private leaf: WorkspaceLeaf | null = null;
 	private store: ViewMemory | null = null;
 	/**
-	 * A restore that could not be carried out when it was asked for. At the moment a
-	 * grid is rebuilt under a search nothing has been read, so no card knows whether
-	 * it is a hit and none of them are hidden — the position only exists once the
-	 * misses have gone. So it is held, and applied again on every fitting pass, each
-	 * of which corrects by a delta and so converges.
+	 * A restore that could not be carried out when it was asked for: under a search,
+	 * the position only exists once the misses have been hidden, which needs the notes
+	 * to have been read. Held, and re-applied on every fitting pass — each corrects by
+	 * a delta, which is what makes repeating it converge.
 	 */
 	private pendingPlace: Place | null = null;
 	/** When to give up on that, for a note that never arrives. */
@@ -169,10 +168,9 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.resizeObserver.observe(this.resultsEl);
 
 		// Rendered markdown does not finish when the renderer says it does: an <img>
-		// has no height until it has loaded, and an embed is resolved a beat later
-		// still, so the height measured when `render()` resolves is the height of the
-		// text without them. Watching the body catches every such late arrival without
-		// having to enumerate what they might be.
+		// has no height until it has loaded, so the height measured when `render()`
+		// resolves is the height of the text without it. Watching the body catches
+		// every such late arrival without having to enumerate what they might be.
 		this.contentObserver = new ResizeObserver((entries) => {
 			for (const observed of entries) {
 				const cardEl = observed.target.closest('.bcc-card');
@@ -338,9 +336,9 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		if (query === '' || this.matcher) return;
 
 		// The matcher first, so that the change handler this sets off sees a search
-		// already in progress and treats itself as a continuation of one. Arriving there
-		// cold would be the reader starting a search, which takes their place in the
-		// base — and would overwrite it with wherever this half-built grid is sitting.
+		// already in progress and treats itself as a continuation. Arriving there cold
+		// would be the reader starting a search — which takes their place in the base,
+		// and would overwrite it with wherever this half-built grid is sitting.
 		this.matcher = prepareSimpleSearch(query);
 		this.searchComponent.setValue(query);
 		// `setValue` alone does not fire it, and the component wants it: without it the
@@ -379,18 +377,15 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// A query the reader changed cancels a restore still in flight: it hides a
 		// different set of cards, so a place held among the old results describes a list
 		// that does not exist. The echo of a query this view just restored into its own
-		// box is not a change, and must not cancel the restore it is part of.
+		// box is not a change.
 		if (this.store?.query !== query) this.pendingPlace = null;
 
 		if (this.store) this.store.query = query;
 
-		// Starting a search hides most of the grid, and a grid that short has nowhere to
-		// put the offset the reader had: the browser clamps it to whatever height is
-		// left. So it is taken before the first card is hidden — and the results are
-		// shown from their top, which is where the best of them are.
-		//
-		// From here until the box is emptied, `place` is left alone: scrolling writes to
-		// `queryPlace` instead, so this survives the whole search.
+		// Starting a search hides most of the grid, and the browser clamps the offset to
+		// whatever height is left — so the place is taken before the first card is
+		// hidden, and the results are shown from their top. From here until the box is
+		// emptied, scrolling writes to `queryPlace` and this survives the whole search.
 		if (searching && !wasSearching && this.store) {
 			this.store.place = this.currentPlace();
 			this.store.queryPlace = nowhere();
@@ -411,9 +406,8 @@ export class ContentCardsView extends BasesView implements HoverParent {
 
 	/**
 	 * Searching means every card has an answer to give, so the reading can no longer
-	 * wait for a card to be scrolled into view. This is the one place that cost is
-	 * paid; `request()` is idempotent and the cache is shared, so a second query
-	 * re-reads nothing.
+	 * wait for a card to be scrolled into view. `request()` is idempotent, so a second
+	 * query re-reads nothing.
 	 */
 	private readEverything(): void {
 		for (const card of this.cardsByPath.values()) this.cache.request(card.file);
@@ -600,10 +594,9 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	}
 
 	/**
-	 * Correcting the file-size guess, and the answer to a resize, are the same job:
-	 * measure, then span what the text needs. Cards arrive in batches — one
-	 * IntersectionObserver callback fills a screenful — so the pass is deferred to the
-	 * next frame and covers every card at once.
+	 * Cards arrive in batches — one IntersectionObserver callback fills a screenful —
+	 * so the pass is deferred to the next frame and covers every card at once, rather
+	 * than reflowing the grid once per arriving note.
 	 */
 	private scheduleFit(card?: Card): void {
 		if (card) this.pending.add(card);
@@ -636,17 +629,16 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 * Read every height first, then write every span: interleaving the two forces a
 	 * layout per card.
 	 *
-	 * Only the cards that asked. Scrolling through a large base fills card after card
-	 * and each arrival schedules a pass, so measuring the whole grid every time means
-	 * the cost of a pass grows with the number of cards already read. Nothing makes a
-	 * card's height depend on its neighbours.
+	 * Only the cards that asked. Measuring the whole grid every time would make the
+	 * cost of a pass grow with the number of cards already read — and the passes are
+	 * most frequent exactly when that number is highest. Nothing makes a card's height
+	 * depend on its neighbours.
 	 */
 	private fitAll(): void {
-		// Taken with the measurements, while the layout is still the one the reader is
-		// looking at: every card above the viewport that corrects its guess shifts
-		// everything below it, and pinning one card on screen absorbs all of it. A held
-		// restore wins over what is on screen, which until it is done is not where the
-		// reader is meant to be.
+		// Taken while the layout is still the one the reader is looking at: every card
+		// above the viewport that corrects its guess shifts everything below it, and
+		// pinning one card on screen absorbs all of it. A held restore wins over what is
+		// on screen, which until it is done is not where the reader is meant to be.
 		const anchor = this.takePending() ?? this.topAnchor();
 
 		const due = this.fitEverything ? this.cardsByPath.values() : this.pending;

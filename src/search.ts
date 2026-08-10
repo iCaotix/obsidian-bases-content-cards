@@ -1,11 +1,10 @@
 /**
  * Choosing which part of a note to show for a search hit.
  *
- * No Obsidian imports on purpose, same as `selector.ts`: the offset arithmetic
- * is where this kind of code goes wrong, and it is far cheaper to pin down in
- * `node --test` than in a running vault. Obsidian's `prepareSimpleSearch`
- * supplies the ranges, `renderMatches` draws them; everything in between is
- * here.
+ * No Obsidian imports, same as `selector.ts`: offset arithmetic is where this kind
+ * of code goes wrong, and it is far cheaper to pin down in `node --test` than in a
+ * running vault. `prepareSimpleSearch` supplies the ranges and `renderMatches`
+ * draws them; everything in between is here.
  */
 
 /** A `[from, to)` range, in the same shape Obsidian's search returns. */
@@ -27,11 +26,10 @@ const SNAP = 20;
  * A window of `text` no longer than `maxLength` that contains the first match,
  * with the match ranges translated into it.
  *
- * The point is the case the plain cover cannot handle: a note whose hit sits
- * two pages down still has to show *why* it matched, so the window travels to
- * the hit rather than the hit being lost past the end of the excerpt. A hit
- * that is already inside the plain excerpt leaves the window where it is —
- * moving it would make the card stop looking like itself for no gain.
+ * The point is the case the plain cover cannot handle: a note whose hit sits two
+ * pages down still has to show *why* it matched, so the window travels to the hit.
+ * A hit already inside the plain excerpt leaves the window where it is — moving it
+ * would make the card stop looking like itself for no gain.
  */
 export function excerptAround(text: string, matches: MatchRange[], maxLength: number): Excerpt {
 	const { start, end } = windowFor(text, matches, maxLength);

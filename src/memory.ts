@@ -3,12 +3,9 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import type { Card } from './cards';
 
 /**
- * Where the reader is, as a note and an offset rather than a pixel.
- *
- * Every height in this view is provisional — guessed from file size, corrected
- * once the note is read, corrected again at a new column width — so a pixel offset
- * means a different place in the list every time one of them changes, and the error
- * is the sum of every guess above it. A card is the same card regardless.
+ * Where the reader is, as a note and an offset rather than a pixel: every height
+ * here is provisional, so a pixel offset means a different place in the list every
+ * time one of them is corrected. A card is the same card regardless.
  */
 export interface Place {
 	path: string | null;
@@ -25,9 +22,8 @@ export interface Anchor {
 
 /**
  * What a tab knows about a grid it has shown before. Kept outside the view on
- * purpose: the view is exactly what does not survive the event this exists for.
- * Opening a note in the same tab replaces the tab's view, and coming back builds a
- * new one from nothing — so this has to be waiting for it somewhere else.
+ * purpose: opening a note in the same tab replaces that view, and coming back
+ * builds a new one from nothing — so this has to be waiting for it elsewhere.
  */
 export interface ViewMemory {
 	/** Which base and view this was taken in — a tab can navigate to another. */
@@ -43,10 +39,10 @@ export interface ViewMemory {
 	query: string;
 	queryPlace: Place;
 	/**
-	 * Every card's fitted span, by path — the heights the same grid had a moment
-	 * ago. A file-size guess keeps the scrollbar honest, but it cannot put the
-	 * reader back on a card a thousand cards down: that position is the sum of
-	 * every height above it, so it is also the sum of every error.
+	 * Every card's fitted span, by path — the heights the same grid had a moment ago.
+	 * A file-size guess keeps the scrollbar honest, but cannot put the reader back on
+	 * a card a thousand cards down: that position is the sum of every height above it,
+	 * so it is also the sum of every error.
 	 */
 	spans: Map<string, number>;
 }
