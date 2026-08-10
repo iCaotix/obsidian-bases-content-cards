@@ -1,6 +1,7 @@
 import {
 	BasesEntry,
 	BasesView,
+	Component,
 	Keymap,
 	MarkdownRenderer,
 	SearchComponent,
@@ -131,6 +132,14 @@ interface Card {
 	bodyEl: HTMLElement;
 	titleEl: HTMLElement;
 	file: TFile;
+	/**
+	 * Owns whatever the markdown renderer built into this cover — image embeds,
+	 * transclusions, and the listeners they come with. A cover is re-rendered every
+	 * time its note changes and every time a search ends, and without something to
+	 * unload the previous one, each of those leaves its predecessor loaded and
+	 * listening on DOM that has already been thrown away.
+	 */
+	renderer: Component | null;
 	span: number;
 	filled: boolean;
 	/**
@@ -188,6 +197,9 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private fittedWidth = 0;
 	private leaf: WorkspaceLeaf | null = null;
 	private store: ViewMemory | null = null;
+	/** Cards whose height may have changed since the last pass. */
+	private readonly pending = new Set<Card>();
+	private fitEverything = false;
 
 	constructor(controller: QueryController, parentEl: HTMLElement) {
 		super(controller);
@@ -216,9 +228,17 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.observer = new IntersectionObserver(
 			(entries) => {
 				for (const observed of entries) {
-					if (!observed.isIntersecting) continue;
 					const card = this.cardsByEl.get(observed.target);
-					if (card && !card.filled) this.cache.request(card.file);
+					if (!card || card.filled) continue;
+
+					// The shimmer is a promise that something is coming — and an
+					// animation on every element wearing it, whether or not anyone can
+					// see it. A base of a few hundred notes hands out a few hundred of
+					// them at once, and the ones off screen are pure cost: paid every
+					// frame, for the whole time the view is open, for nothing. So it is
+					// worn only by the cards actually being read.
+					card.coverEl.toggleClass('bcc-cover-loading', observed.isIntersecting);
+					if (observed.isIntersecting) this.cache.request(card.file);
 				}
 			},
 			{ root: null, rootMargin: '200px' },
@@ -233,7 +253,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			const width = entries[entries.length - 1]?.contentRect.width ?? 0;
 			if (width === this.fittedWidth) return; // height-only change: nothing reflows
 			this.fittedWidth = width;
-			this.scheduleFit();
+			this.scheduleRefit();
 		});
 		this.resizeObserver.observe(this.resultsEl);
 
@@ -244,7 +264,13 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// and `overflow: hidden` would then cut the picture off for good. Watching
 		// the body catches every such late arrival, images included, without
 		// having to enumerate what they might be.
-		this.contentObserver = new ResizeObserver(() => this.scheduleFit());
+		this.contentObserver = new ResizeObserver((entries) => {
+			for (const observed of entries) {
+				const cardEl = observed.target.closest('.bcc-card');
+				const card = cardEl ? this.cardsByEl.get(cardEl) : undefined;
+				if (card) this.scheduleFit(card);
+			}
+		});
 
 		// A card painted before Obsidian finished indexing shows a cover built from
 		// an empty metadata cache. Repaint it once the cache catches up — this also
@@ -281,7 +307,9 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.resultsEl.toggleClass('bcc-tint-strong', this.params.tint === 'strong');
 		this.observer.disconnect();
 		this.contentObserver.disconnect(); // the elements it holds are about to go
+		for (const card of this.cardsByPath.values()) this.disposeRenderer(card);
 		this.cardsByPath.clear();
+		this.pending.clear(); // cards from the grid being replaced, about to be detached
 		this.groups.length = 0;
 		this.resultsEl.empty();
 
@@ -305,6 +333,10 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// to be, or they would count as "no match" for the wrong reason.
 		if (this.matcher) this.readEverything();
 
+		// A pass of its own, marking no card: the group headings and the count belong
+		// to the grid rather than to any card in it, and a rebuild that ends with
+		// every card hidden — or with no cards at all — leaves nobody to ask for one.
+		this.scheduleFit();
 		this.restoreScroll();
 	}
 
@@ -483,6 +515,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			span: SIZE_STEPS.m,
 			filled: false,
 			haystack: null,
+			renderer: null,
 		};
 
 		this.setSpan(card, this.initialSpan(file));
@@ -505,12 +538,10 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		}
 
 		const cached = this.cache.get(file);
-		if (cached === null) {
-			card.coverEl.addClass('bcc-cover-loading');
-			this.observer.observe(cardEl);
-		} else {
-			this.paint(card, cached);
-		}
+		// The shimmer waits for the observer: a card nowhere near the viewport is not
+		// being read, so it has nothing to promise. See the observer's callback.
+		if (cached === null) this.observer.observe(cardEl);
+		else this.paint(card, cached);
 	}
 
 	private initialSpan(file: TFile): number {
@@ -615,6 +646,11 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		card.haystack = stripMarkdown(region);
 		card.filled = true;
 
+		// It has nothing left to tell us, and an observer that keeps watching it keeps
+		// recomputing its intersection on every scroll, along with every other card
+		// the reader has already been past.
+		this.observer.unobserve(card.el);
+
 		this.renderCover(card);
 	}
 
@@ -629,6 +665,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		const hit = this.matcher?.(card.haystack) ?? null;
 		if (!this.matchCard(card, hit)) return;
 
+		this.disposeRenderer(card);
 		card.bodyEl.empty();
 		card.coverEl.removeClass('bcc-cover-loading');
 
@@ -651,20 +688,25 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		card.bodyEl.toggleClass('bcc-cover-plain', !this.params.markdown);
 
 		if (excerpt === '') {
-			this.scheduleFit();
+			this.scheduleFit(card);
 			return;
 		}
 
 		if (this.params.markdown) {
 			this.contentObserver.observe(card.bodyEl);
-			void MarkdownRenderer.render(this.app, excerpt, card.bodyEl, card.file.path, this).then(() =>
-				this.scheduleFit(),
-			);
+
+			const renderer = this.addChild(new Component());
+			card.renderer = renderer;
+			void MarkdownRenderer.render(this.app, excerpt, card.bodyEl, card.file.path, renderer).then(() => {
+				// A keystroke or a data update during the render has already replaced
+				// this cover with another; the pass it wants is not about this any more.
+				if (card.renderer === renderer) this.scheduleFit(card);
+			});
 			return;
 		}
 
 		card.bodyEl.setText(stripMarkdown(excerpt));
-		this.scheduleFit();
+		this.scheduleFit(card);
 	}
 
 	/**
@@ -684,7 +726,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		card.bodyEl.addClass('bcc-cover-plain');
 		renderMatches(card.bodyEl, excerpt.text, excerpt.matches);
 
-		this.scheduleFit();
+		this.scheduleFit(card);
 	}
 
 	/**
@@ -725,7 +767,21 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 * to the next frame and covers every card at once, rather than reflowing the
 	 * grid once per arriving note.
 	 */
-	private scheduleFit(): void {
+	private scheduleFit(card?: Card): void {
+		if (card) this.pending.add(card);
+		this.schedulePass();
+	}
+
+	/**
+	 * Every card at once, for the one thing that changes all of their heights
+	 * without touching any of them: the width of the columns.
+	 */
+	private scheduleRefit(): void {
+		this.fitEverything = true;
+		this.schedulePass();
+	}
+
+	private schedulePass(): void {
 		if (this.fitHandle !== 0) return;
 
 		// The card's own window, so this still works when the view is in a popout.
@@ -738,31 +794,68 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		});
 	}
 
-	/** Read every height first, then write every span: interleaving the two forces a layout per card. */
+	/**
+	 * Read every height first, then write every span: interleaving the two forces a
+	 * layout per card.
+	 *
+	 * Only the cards that asked. Scrolling through a large base fills card after
+	 * card, and each arrival schedules a pass — so measuring the whole grid every
+	 * time means the cost of a pass grows with the number of cards already read,
+	 * and the passes are most frequent exactly when that number is highest. Nothing
+	 * makes a card's height depend on its neighbours: it spans the rows it was
+	 * given, and they span theirs.
+	 */
 	private fitAll(): void {
 		// Taken with the measurements, while the layout is still the one the reader is
-		// looking at. Notes are read as they are scrolled towards, so a pass like this
-		// runs constantly during scrolling, and every card above the viewport that
-		// corrects its guess shifts everything below it — which is the whole list
-		// sliding under the reader. Pinning one card on screen absorbs all of it.
+		// looking at. Every card above the viewport that corrects its guess shifts
+		// everything below it — which is the whole list sliding under the reader.
+		// Pinning one card on screen absorbs all of it.
 		const anchor = this.topAnchor();
 
+		const due = this.fitEverything ? this.cardsByPath.values() : this.pending;
 		const measurements: Measurement[] = [];
-		let shown = 0;
 
-		for (const card of this.cardsByPath.values()) {
-			if (card.el.hasClass('bcc-card-hidden')) continue; // no layout to measure
-			shown++;
-			if (!card.filled) continue;
+		for (const card of due) {
+			// A card left over from a grid that has since been replaced measures zero,
+			// which is not a height — and would be written back as one, into the spans
+			// this tab remembers for the next time it draws this base.
+			if (!card.el.isConnected) continue;
+			if (!card.filled || card.el.hasClass('bcc-card-hidden')) continue; // no layout to measure
 			measurements.push({ card, needed: card.bodyEl.offsetHeight, available: card.coverEl.clientHeight });
 		}
+
+		this.pending.clear();
+		this.fitEverything = false;
 
 		for (const measurement of measurements) this.fit(measurement);
 
 		this.reconcileGroups();
-		this.countEl.setText(this.matcher ? `${shown} of ${this.cardsByPath.size}` : '');
+		this.updateCount();
 
 		if (anchor) this.scrollToAnchor(anchor);
+	}
+
+	/** Unloads the previous rendering of a cover, and everything it registered. */
+	private disposeRenderer(card: Card): void {
+		if (!card.renderer) return;
+
+		this.removeChild(card.renderer);
+		card.renderer = null;
+	}
+
+	/** Counted rather than tracked, because a card can be hidden from several places. */
+	private updateCount(): void {
+		if (!this.matcher) {
+			this.countEl.setText('');
+			return;
+		}
+
+		let shown = 0;
+		for (const card of this.cardsByPath.values()) {
+			if (!card.el.hasClass('bcc-card-hidden')) shown++;
+		}
+
+		this.countEl.setText(`${shown} of ${this.cardsByPath.size}`);
 	}
 
 	/** A group whose cards were all filtered out should take its heading with it. */
