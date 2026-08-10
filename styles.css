@@ -1,0 +1,120 @@
+.bcc-container {
+	/* Must match ROW_HEIGHT in src/view.ts. */
+	--bcc-row-height: 8px;
+	--bcc-min-width: 240px;
+	padding: var(--size-4-3);
+	overflow-y: auto;
+	height: 100%;
+}
+
+.bcc-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(var(--bcc-min-width), 1fr));
+	grid-auto-rows: var(--bcc-row-height);
+	gap: var(--size-4-3);
+	align-items: start;
+}
+
+.bcc-group-title {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+	margin: var(--size-4-4) 0 var(--size-4-2);
+}
+
+.bcc-card {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	transition: grid-row 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.bcc-card:hover {
+	box-shadow: var(--shadow-s);
+}
+
+.bcc-cover {
+	flex: 1 1 auto;
+	overflow: hidden;
+	padding: var(--size-4-3);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-tight);
+	color: var(--text-normal);
+	white-space: pre-wrap;
+	/* Fade rather than a hard cut, so a clipped cover reads as "there is more". */
+	mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.bcc-cover-loading {
+	background: linear-gradient(
+		100deg,
+		var(--background-secondary) 40%,
+		var(--background-modifier-hover) 50%,
+		var(--background-secondary) 60%
+	);
+	background-size: 300% 100%;
+	animation: bcc-shimmer 1.4s ease-in-out infinite;
+}
+
+.bcc-cover-empty::after {
+	content: 'Empty note';
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+@keyframes bcc-shimmer {
+	from {
+		background-position: 150% 0;
+	}
+	to {
+		background-position: -50% 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bcc-cover-loading {
+		animation: none;
+	}
+
+	.bcc-card {
+		transition: none;
+	}
+}
+
+.bcc-footer {
+	flex: 0 0 auto;
+	padding: var(--size-4-2) var(--size-4-3) var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.bcc-title {
+	display: block;
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	text-decoration: none;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bcc-title:hover {
+	color: var(--text-accent);
+}
+
+.bcc-props {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2) var(--size-4-2);
+	margin-top: var(--size-2-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.bcc-prop-label {
+	color: var(--text-faint);
+	margin-right: var(--size-2-1);
+}
