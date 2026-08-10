@@ -95,11 +95,8 @@ interface ViewMemory {
 	/** Which base and view this was taken in — a tab can navigate to another. */
 	basePath: string;
 	viewName: string;
-	/** The note the reader was looking at, and where it sat. See `Anchor`. */
-	anchorPath: string | null;
-	anchorOffset: number;
-	/** Only for when that note is gone from the data by the time we come back. */
-	top: number;
+	/** Where the reader was, in the form that survives the grid being rebuilt. */
+	place: Place;
 	/**
 	 * Every card's fitted span, by path. What a rebuilt grid otherwise has to guess
 	 * from file size — and a guess is enough to keep the scrollbar honest while the
@@ -122,6 +119,18 @@ interface ViewMemory {
 interface Anchor {
 	card: Card;
 	offset: number;
+}
+
+/**
+ * An `Anchor` that has let go of its card: the note by path, so it still means
+ * something once the cards it referred to have been thrown away and rebuilt —
+ * or, as when a search hides most of them, merely detached from the layout.
+ */
+interface Place {
+	path: string | null;
+	offset: number;
+	/** Only for when that note is not in the grid to be found. */
+	top: number;
 }
 
 interface Card {
@@ -197,6 +206,12 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private fittedWidth = 0;
 	private leaf: WorkspaceLeaf | null = null;
 	private store: ViewMemory | null = null;
+	/**
+	 * Where the reader was in the whole grid, held for as long as a search is
+	 * narrowing it. Not in `ViewMemory`: a search does not outlive the view, so
+	 * neither should the position it interrupted.
+	 */
+	private placeBeforeSearch: Place | null = null;
 	/** Cards whose height may have changed since the last pass. */
 	private readonly pending = new Set<Card>();
 	private fitEverything = false;
@@ -372,9 +387,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		const fresh: ViewMemory = {
 			basePath,
 			viewName: this.config.name,
-			anchorPath: null,
-			anchorOffset: 0,
-			top: 0,
+			place: { path: null, offset: 0, top: 0 },
 			spans: new Map(),
 		};
 		memoryByLeaf.set(leaf, fresh);
@@ -386,10 +399,24 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.store ??= this.memory();
 		if (!this.store) return;
 
+		// While a search is on, the offset describes the results — and the results do
+		// not survive the view, so a tab coming back to a grid it has no query for
+		// would be put down at a card it has no reason to be at. What it should come
+		// back to is the place the search interrupted, which is already being held.
+		if (this.placeBeforeSearch) return;
+
+		this.store.place = this.currentPlace();
+	}
+
+	/** Where the reader is now, in a form that outlives the cards it describes. */
+	private currentPlace(): Place {
 		const anchor = this.topAnchor();
-		this.store.anchorPath = anchor?.card.file.path ?? null;
-		this.store.anchorOffset = anchor?.offset ?? 0;
-		this.store.top = this.resultsEl.scrollTop;
+
+		return {
+			path: anchor?.card.file.path ?? null,
+			offset: anchor?.offset ?? 0,
+			top: this.resultsEl.scrollTop,
+		};
 	}
 
 	/**
@@ -442,17 +469,20 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 * navigated to a different base has a scroll position, but not this one.
 	 */
 	private restoreScroll(): void {
-		const saved = this.store;
-		if (!saved) return;
+		if (this.store) this.restorePlace(this.store.place);
+	}
 
-		const card = saved.anchorPath === null ? undefined : this.cardsByPath.get(saved.anchorPath);
+	/**
+	 * The note itself, if it is still in the grid. Every card around it already
+	 * spans what it spanned before, so this lands where the reader left off rather
+	 * than near it. A note that has since been filtered out, hidden by a search or
+	 * deleted leaves nothing better than the raw offset.
+	 */
+	private restorePlace(place: Place): void {
+		const card = place.path === null ? undefined : this.cardsByPath.get(place.path);
 
-		// The note itself, if it is still in the base. Every card around it already
-		// spans what it spanned before, so this lands where the reader left off
-		// rather than near it. A note that has since been filtered out or deleted
-		// leaves nothing better than the raw offset.
-		if (card) this.scrollToAnchor({ card, offset: saved.anchorOffset });
-		else this.resultsEl.scrollTop = saved.top;
+		if (card) this.scrollToAnchor({ card, offset: place.offset });
+		else this.resultsEl.scrollTop = place.top;
 	}
 
 	/**
@@ -463,10 +493,35 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 */
 	private setQuery(raw: string): void {
 		const query = raw.trim();
-		this.matcher = query === '' ? null : prepareSimpleSearch(query);
+		const wasSearching = this.matcher !== null;
+		const searching = query !== '';
+
+		this.matcher = searching ? prepareSimpleSearch(query) : null;
+
+		// Starting a search hides most of the grid, and a grid that short has nowhere
+		// to put the offset the reader had: the browser clamps it to whatever height
+		// is left, which loses a position two hundred cards down as thoroughly as
+		// opening a note does. So it is taken before the first card is hidden — and
+		// the results are shown from their top, which is where the best of them are
+		// and not where the reader happened to be standing in the base underneath.
+		if (searching && !wasSearching) {
+			this.placeBeforeSearch = this.currentPlace();
+			if (this.store) this.store.place = this.placeBeforeSearch;
+			this.resultsEl.scrollTop = 0;
+		}
 
 		if (this.matcher) this.readEverything();
 		for (const card of this.cardsByPath.values()) this.renderCover(card);
+
+		// Emptying the box is the reader going back to the base, not arriving at it.
+		// Restored here, while the cards are back but before the fitting pass runs, so
+		// that the pass anchors on the card they came back to rather than pinning the
+		// top of the list in place.
+		if (!searching && wasSearching && this.placeBeforeSearch) {
+			this.restorePlace(this.placeBeforeSearch);
+			this.placeBeforeSearch = null;
+		}
+
 		this.scheduleFit();
 	}
 

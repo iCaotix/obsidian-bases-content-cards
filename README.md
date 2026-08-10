@@ -53,7 +53,8 @@ To update, run the same three commands again and reload Obsidian.
 - **Click anywhere on a card** to open its note; Cmd-click or middle click opens a new tab.
   Links inside a markdown-rendered cover still go where they point.
 - **Your place in the grid is kept.** Open a note, come back, and the grid is where you left
-  it — as it also is after an edit elsewhere in the vault rebuilds the view. It is the note
+  it — as it also is after an edit elsewhere in the vault rebuilds the view, and after a
+  search has emptied the grid down to a handful of cards and given it back. It is the note
   at the top edge that is put back, not a pixel offset, and the tab remembers the heights it
   had fitted, so a card a thousand cards down lands where it was. Kept per tab, so two tabs
   on the same base do not drag each other around.
@@ -80,6 +81,8 @@ Worth knowing:
   one-time cost per note, shared with the covers.
 - While searching, covers are plain text even with markdown rendering on: a highlight has to
   go around a range of characters, and rendering scatters those across a tree.
+- Results start at the top, and emptying the box puts you back where you were before you
+  searched — the detour costs you your place in the base no more than opening a note does.
 
 ## Options
 
