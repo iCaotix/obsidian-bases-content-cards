@@ -96,12 +96,6 @@ rendering as they do now.
 
 ## 2. Worth doing, smaller
 
-**Keep the search query per tab.** The scroll position now survives opening a note and coming
-back; the query does not, so returning from a search result lands you in the full base with an
-empty box. It belongs in the same per-leaf memory, and the pre-search position is already
-being held next to where it would go. The open question is whether a restored query should
-also restore the scroll position *within the results*, or start them at the top.
-
 **A right-click menu.** `workspace.trigger('file-menu', …)` gives a card the same menu the
 file explorer has — rename, move, delete, copy link, plus whatever other plugins have added —
 for a few lines. Probably the best value-per-line left in the plugin.

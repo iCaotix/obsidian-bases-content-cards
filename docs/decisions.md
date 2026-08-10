@@ -53,16 +53,26 @@ This is what makes the position survive the three things that destroy it: openin
 the same tab (which replaces the view), an edit elsewhere in the vault (which rebuilds the
 grid), and a search (which hides most of it).
 
-## 2026-08-10 — The search is the view's, and does not outlive it
+## 2026-08-10 — The search survives the tab, but not the session
 
 Bases has a search in its toolbar and it already works on these cards, but it can only see the
 properties the view is showing, because that is all Bases can see. The box above the grid is
 the other half: it reads the body. The two compose, and neither replaces the other.
 
-It is not persisted. A query is a question being asked right now, not a property of the view,
-and a base that reopened three days later still filtered by a word nobody remembers typing
-would look broken rather than helpful. The scroll position from before the search *is* kept,
-because that is the reader's place in the base and not part of the question.
+The query is kept in the same per-tab memory as the scroll position, and for the same reason:
+opening a note replaces the tab's view, and coming back to an empty box having lost a search
+you were halfway through reading is the same loss as coming back to the top of the grid.
+Clicking a result is the single most likely thing to do with a search, so it is precisely the
+case that must not throw it away.
+
+It is not written to disk. A query is a question being asked now, not a property of the view,
+and a base reopened next week still filtered by a word nobody remembers typing would look
+broken rather than helpful. The `WeakMap` gives exactly that lifetime for free: the tab keeps
+it, closing the tab discards it.
+
+Two positions are therefore remembered rather than one — where the reader was among the
+results, and where they were in the base before they searched. Emptying the box goes back to
+the second, which is why searching costs no more than opening a note does.
 
 Matched covers are plain text even when markdown rendering is on: a highlight goes around a
 range of characters, and rendering scatters those across a tree. Obsidian's own search results

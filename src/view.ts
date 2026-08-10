@@ -43,6 +43,14 @@ export type TintName = 'off' | 'subtle' | 'strong';
 export const UNLIMITED = 'unlimited';
 
 /**
+ * How long to keep trying to put the reader back among the results of a restored
+ * search. It takes as many attempts as it takes for the notes to be read and the
+ * misses to be hidden, so it cannot be a number of tries — but a note that never
+ * arrives must not leave a view re-scrolling itself forever.
+ */
+const RESTORE_TIMEOUT = 5000;
+
+/**
  * How many hues the tint may pick from. Kept coarse on purpose: a hue taken from
  * the whole circle produces neighbours a few degrees apart, which at tint strength
  * are the same colour with extra steps. Twelve are each recognisably one colour.
@@ -95,8 +103,15 @@ interface ViewMemory {
 	/** Which base and view this was taken in — a tab can navigate to another. */
 	basePath: string;
 	viewName: string;
-	/** Where the reader was, in the form that survives the grid being rebuilt. */
+	/**
+	 * Where the reader was in the grid with nothing hidden. Held still for as long
+	 * as a search is on: that is the place the search interrupted, and the place
+	 * emptying the box goes back to.
+	 */
 	place: Place;
+	/** What was in the search box, and where the reader was among what it found. */
+	query: string;
+	queryPlace: Place;
 	/**
 	 * Every card's fitted span, by path. What a rebuilt grid otherwise has to guess
 	 * from file size — and a guess is enough to keep the scrollbar honest while the
@@ -193,6 +208,8 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private readonly rootEl: HTMLElement;
 	private readonly resultsEl: HTMLElement;
 	private readonly countEl: HTMLElement;
+	/** Held so a restored query can be put back in the box the reader sees. */
+	private readonly searchComponent: SearchComponent;
 	private readonly cache: ContentCache;
 	private readonly observer: IntersectionObserver;
 	private readonly resizeObserver: ResizeObserver;
@@ -207,11 +224,18 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private leaf: WorkspaceLeaf | null = null;
 	private store: ViewMemory | null = null;
 	/**
-	 * Where the reader was in the whole grid, held for as long as a search is
-	 * narrowing it. Not in `ViewMemory`: a search does not outlive the view, so
-	 * neither should the position it interrupted.
+	 * A restore that could not be carried out when it was asked for.
+	 *
+	 * Putting the reader back among the results of a restored search is not a thing
+	 * that can be done in one go: at the moment the grid is rebuilt nothing has been
+	 * read yet, so no card knows whether it is a hit and none of them are hidden.
+	 * The position only exists once the misses have gone. So it is held, and applied
+	 * again on every fitting pass — each one corrects by a delta, which is exactly
+	 * what makes repeating it converge — until the grid stops moving underneath it.
 	 */
-	private placeBeforeSearch: Place | null = null;
+	private pendingPlace: Place | null = null;
+	/** When to give up on that, for a note that never arrives. */
+	private pendingUntil = 0;
 	/** Cards whose height may have changed since the last pass. */
 	private readonly pending = new Set<Card>();
 	private fitEverything = false;
@@ -224,12 +248,20 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// The bar sits outside the part `onDataUpdated()` empties. A metadata event
 		// mid-search would otherwise tear the input out from under the cursor.
 		const searchEl = this.rootEl.createDiv('bcc-search');
-		new SearchComponent(searchEl)
+		this.searchComponent = new SearchComponent(searchEl)
 			.setPlaceholder('Search note contents…')
 			.onChange(debounce((query: string) => this.setQuery(query), 200, true));
 		this.countEl = searchEl.createDiv('bcc-search-count');
 
 		this.resultsEl = this.rootEl.createDiv('bcc-results');
+
+		// A restore in progress gives way to the reader. It re-applies itself every
+		// pass until the results settle, and if they have started scrolling on their
+		// own by then, being hauled back is worse than never being put there.
+		for (const name of ['wheel', 'touchstart', 'keydown'] as const) {
+			this.resultsEl.addEventListener(name, () => (this.pendingPlace = null), { passive: true });
+		}
+
 		// Recorded as it happens rather than once on the way out: by the time a view
 		// is told it is being unloaded its element can already be detached, and a
 		// detached element reports an offset of zero — which is precisely the answer
@@ -314,6 +346,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	public onDataUpdated(): void {
 		this.params = this.readParams();
 		this.store = this.memory();
+		this.restoreQuery();
 		// One class for the whole view rather than one per card: nothing about it
 		// varies per note, and a wrapped title only changes how tall the footer is —
 		// which the fitting pass reads back off the cover either way.
@@ -388,6 +421,8 @@ export class ContentCardsView extends BasesView implements HoverParent {
 			basePath,
 			viewName: this.config.name,
 			place: { path: null, offset: 0, top: 0 },
+			query: '',
+			queryPlace: { path: null, offset: 0, top: 0 },
 			spans: new Map(),
 		};
 		memoryByLeaf.set(leaf, fresh);
@@ -399,13 +434,11 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		this.store ??= this.memory();
 		if (!this.store) return;
 
-		// While a search is on, the offset describes the results — and the results do
-		// not survive the view, so a tab coming back to a grid it has no query for
-		// would be put down at a card it has no reason to be at. What it should come
-		// back to is the place the search interrupted, which is already being held.
-		if (this.placeBeforeSearch) return;
-
-		this.store.place = this.currentPlace();
+		// Two positions, because there are two places to come back to. While a search
+		// is on the offset describes the results, and `place` is left holding the base
+		// underneath it — untouched, so that emptying the box still has somewhere to go.
+		if (this.matcher) this.store.queryPlace = this.currentPlace();
+		else this.store.place = this.currentPlace();
 	}
 
 	/** Where the reader is now, in a form that outlives the cards it describes. */
@@ -469,7 +502,67 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	 * navigated to a different base has a scroll position, but not this one.
 	 */
 	private restoreScroll(): void {
-		if (this.store) this.restorePlace(this.store.place);
+		if (!this.store) return;
+
+		// With a search restored there is nothing yet to put the reader back among:
+		// not a note has been read, so no card knows whether it is a hit and none of
+		// them are hidden. Handed to the fitting pass, which keeps trying while the
+		// answers arrive.
+		if (this.matcher) {
+			this.pendingPlace = this.store.queryPlace;
+			this.pendingUntil = Date.now() + RESTORE_TIMEOUT;
+			return;
+		}
+
+		this.restorePlace(this.store.place);
+	}
+
+	/**
+	 * The held restore, as an anchor, for as long as it is still worth attempting.
+	 *
+	 * It is given up on once every card has an answer — the grid has stopped losing
+	 * rows above the target, so the last application of it was the right one — and
+	 * on a deadline besides, because a note that never arrives would otherwise mean
+	 * a view that re-scrolls itself for the rest of its life.
+	 */
+	private takePending(): Anchor | null {
+		const place = this.pendingPlace;
+		if (!place) return null;
+
+		if (this.allFilled() || Date.now() > this.pendingUntil) this.pendingPlace = null;
+
+		const card = place.path === null ? undefined : this.cardsByPath.get(place.path);
+
+		return card ? { card, offset: place.offset } : null;
+	}
+
+	private allFilled(): boolean {
+		for (const card of this.cardsByPath.values()) {
+			if (!card.filled) return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Puts a remembered query back in the box, and back in force, when a tab returns
+	 * to a grid it was searching. Only ever on a view that is not searching already:
+	 * a data update mid-search must not disturb the box under the cursor.
+	 */
+	private restoreQuery(): void {
+		const query = this.store?.query ?? '';
+		if (query === '' || this.matcher) return;
+
+		// The matcher first, so that the change handler this sets off sees a search
+		// already in progress and treats itself as a continuation of one. Arriving
+		// there cold would be the reader starting a search, which takes their place
+		// in the base — and would overwrite it with wherever this half-built grid
+		// happens to be sitting.
+		this.matcher = prepareSimpleSearch(query);
+		this.searchComponent.setValue(query);
+		// `setValue` alone does not fire it, and the component wants it: without it
+		// the box holds text that its own clear button does not believe is there.
+		this.searchComponent.onChanged();
 	}
 
 	/**
@@ -498,15 +591,29 @@ export class ContentCardsView extends BasesView implements HoverParent {
 
 		this.matcher = searching ? prepareSimpleSearch(query) : null;
 
+		this.store ??= this.memory();
+
+		// A query the reader changed cancels a restore still in flight: it hides a
+		// different set of cards, so a place held among the old results describes a
+		// list that no longer exists. The echo of a query this view just restored
+		// into its own box is not a change, and must not cancel the restore it is
+		// part of.
+		if (this.store?.query !== query) this.pendingPlace = null;
+
+		if (this.store) this.store.query = query;
+
 		// Starting a search hides most of the grid, and a grid that short has nowhere
 		// to put the offset the reader had: the browser clamps it to whatever height
 		// is left, which loses a position two hundred cards down as thoroughly as
 		// opening a note does. So it is taken before the first card is hidden — and
 		// the results are shown from their top, which is where the best of them are
 		// and not where the reader happened to be standing in the base underneath.
-		if (searching && !wasSearching) {
-			this.placeBeforeSearch = this.currentPlace();
-			if (this.store) this.store.place = this.placeBeforeSearch;
+		//
+		// From here until the box is emptied, `place` is left alone: scrolling writes
+		// to `queryPlace` instead, so this survives the whole search.
+		if (searching && !wasSearching && this.store) {
+			this.store.place = this.currentPlace();
+			this.store.queryPlace = { path: null, offset: 0, top: 0 };
 			this.resultsEl.scrollTop = 0;
 		}
 
@@ -517,10 +624,7 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// Restored here, while the cards are back but before the fitting pass runs, so
 		// that the pass anchors on the card they came back to rather than pinning the
 		// top of the list in place.
-		if (!searching && wasSearching && this.placeBeforeSearch) {
-			this.restorePlace(this.placeBeforeSearch);
-			this.placeBeforeSearch = null;
-		}
+		if (!searching && wasSearching && this.store) this.restorePlace(this.store.place);
 
 		this.scheduleFit();
 	}
@@ -794,8 +898,17 @@ export class ContentCardsView extends BasesView implements HoverParent {
 	private matchCard(card: Card, hit: SearchResult | null): boolean {
 		const titleHit = this.matcher?.(card.file.basename) ?? null;
 		const matched = !this.matcher || hit !== null || titleHit !== null;
+		const wasHidden = card.el.hasClass('bcc-card-hidden');
 
 		card.el.toggleClass('bcc-card-hidden', !matched);
+
+		// A card entering or leaving the layout moves every card after it, which is
+		// the same disturbance a corrected height is and wants the same answer: a
+		// pass, so that whatever is anchored is put back afterwards. Nothing else
+		// asks for one on this path — a card that turned out to be a miss returns
+		// below without a cover to draw, and would otherwise slide the grid under
+		// the reader for free.
+		if (wasHidden === matched) this.schedulePass();
 
 		card.titleEl.empty();
 		if (titleHit) renderMatches(card.titleEl, card.file.basename, titleHit.matches);
@@ -865,7 +978,11 @@ export class ContentCardsView extends BasesView implements HoverParent {
 		// looking at. Every card above the viewport that corrects its guess shifts
 		// everything below it — which is the whole list sliding under the reader.
 		// Pinning one card on screen absorbs all of it.
-		const anchor = this.topAnchor();
+		//
+		// A held restore wins over what is on screen: until it is done, what is on
+		// screen is not where the reader is meant to be, and anchoring to it would
+		// pin the grid to the wrong card and keep it there.
+		const anchor = this.takePending() ?? this.topAnchor();
 
 		const due = this.fitEverything ? this.cardsByPath.values() : this.pending;
 		const measurements: Measurement[] = [];

@@ -67,7 +67,8 @@ Either way: enable **Bases Content Cards** under Settings → Community plugins,
   on the same base do not drag each other around.
 - **Search inside the notes.** The box above the grid matches the note body, not just its
   name. Cards that miss are hidden, hits are highlighted, and a card whose hit lies past the
-  excerpt re-points its cover at the passage that matched.
+  excerpt re-points its cover at the passage that matched. Open a result and come back and the
+  search is still there, still where you left it.
 
 ## Search
 
@@ -90,6 +91,10 @@ Worth knowing:
   go around a range of characters, and rendering scatters those across a tree.
 - Results start at the top, and emptying the box puts you back where you were before you
   searched — the detour costs you your place in the base no more than opening a note does.
+- **The search survives opening a result.** Click a card, read the note, come back: the query
+  is still in the box and you are still where you were in the results. Kept per tab and only
+  while the tab is open — a query is a question you are asking now, not a setting, so it is
+  never written to the `.base`.
 
 ## Options
 
