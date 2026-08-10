@@ -143,6 +143,7 @@ symlink, hot reload, releasing).
 | [docs/bases-api.md](docs/bases-api.md) | What the Bases plugin API does and does not offer, with sources |
 | [docs/plan-content-cards.md](docs/plan-content-cards.md) | Design and implementation order |
 | [docs/dev-workflow.md](docs/dev-workflow.md) | Repo layout and day-to-day workflow |
+| [docs/roadmap.md](docs/roadmap.md) | What could come next, and what deliberately will not |
 
 ## Status
 
