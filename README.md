@@ -8,20 +8,14 @@ what the note actually says: there is no `file.content`, and no way for a plugin
 column to the built-in table. This view reads the body itself and puts it where you can
 see it.
 
-```
-┌────────────────┐  ┌────────────────┐
-│  Excerpt from  │  │  Short note    │
-│  the note's    │  ├────────────────┤
-│  body          │  │  Title         │
-│                │  │  tags · link   │
-├────────────────┤  └────────────────┘
-│  Title         │  ┌────────────────┐
-│  tags · link   │  │  Medium note   │
-└────────────────┘  │                │
-                    ├────────────────┤
-                    │  Title         │
-                    └────────────────┘
-```
+![A base of 372 notes as content cards: five columns of cards of differing heights, each
+showing the start of the note's own text — prose, a heading, a rendered image, a code block —
+with the note's title and tags underneath, and a search box across the
+top](docs/screenshot.png)
+
+*A `.base` of saved articles, with markdown rendering and the subtle tint on. Each card is as
+tall as the note it shows, and the box at the top searches the text on the cards, not their
+titles.*
 
 Requires Obsidian 1.10.0 or later (the Bases view API).
 
