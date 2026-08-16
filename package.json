@@ -1,9 +1,18 @@
 {
 	"name": "obsidian-bases-content-cards",
 	"version": "1.0.1",
-	"description": "A Bases card view that shows note content as the cover.",
+	"description": "Show notes as cards in Bases, using each note's own content as the cover instead of an image.",
 	"main": "main.js",
 	"type": "module",
+	"author": "Marcel Schwarz (https://github.com/iCaotix)",
+	"homepage": "https://github.com/iCaotix/obsidian-bases-content-cards#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/iCaotix/obsidian-bases-content-cards.git"
+	},
+	"bugs": {
+		"url": "https://github.com/iCaotix/obsidian-bases-content-cards/issues"
+	},
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
@@ -17,13 +26,13 @@
 		"obsidian-plugin",
 		"bases"
 	],
-	"license": "0-BSD",
+	"license": "0BSD",
 	"devDependencies": {
 		"@eslint/js": "^9.39.4",
 		"@types/node": "^22.15.17",
 		"esbuild": "0.25.5",
 		"eslint": "^9.39.4",
-		"eslint-plugin-obsidianmd": "^0.4.0",
+		"eslint-plugin-obsidianmd": "^0.4.1",
 		"globals": "^17.6.0",
 		"jiti": "^2.6.1",
 		"obsidian": "latest",

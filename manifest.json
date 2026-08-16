@@ -3,7 +3,8 @@
 	"name": "Bases Content Cards",
 	"version": "1.0.1",
 	"minAppVersion": "1.10.0",
-	"description": "A Bases view that shows notes as cards, using the note's own content as the cover instead of an image.",
+	"description": "Show notes as cards in Bases, using each note's own content as the cover instead of an image.",
 	"author": "Marcel Schwarz",
+	"authorUrl": "https://github.com/iCaotix",
 	"isDesktopOnly": false
 }

@@ -27,13 +27,11 @@ Requires Obsidian 1.10.0 or later (the Bases view API).
 
 ## Install
 
-Not in the community catalogue yet. Two ways in the meantime.
-
 **From a release.** Download `main.js`, `manifest.json` and `styles.css` from the
-[latest release](https://github.com/<owner>/obsidian-bases-content-cards/releases/latest) and
+[latest release](https://github.com/iCaotix/obsidian-bases-content-cards/releases/latest) and
 put all three in `<vault>/.obsidian/plugins/bases-content-cards/`. Or point
 [BRAT](https://github.com/TfTHacker/obsidian42-brat) at
-`<owner>/obsidian-bases-content-cards` and let it handle updates.
+`iCaotix/obsidian-bases-content-cards` and let it handle updates.
 
 **From source.**
 
@@ -159,8 +157,9 @@ symlink, hot reload, releasing).
 
 ## Status
 
-1.0.1 — in daily use, not yet in the community catalogue. The view is **read-only**: it never
-writes to your vault.
+In daily use. The view is **read-only**: it never writes to your vault. It makes no network
+requests, collects no telemetry, needs no account, and reads nothing outside the vault you
+opened it in — everything it shows comes from notes the base already returned.
 
 Known limits:
 
@@ -172,3 +171,7 @@ Known limits:
   [roadmap](docs/roadmap.md), not in this release.
 - Properties under the cover are shown, not editable. Also on the
   [roadmap](docs/roadmap.md), and the largest thing missing.
+
+## License
+
+[0BSD](LICENSE) — use it, change it, ship it, no attribution asked for.

@@ -9,6 +9,29 @@ decided yet are in [roadmap.md](roadmap.md).
 
 ---
 
+## 2026-08-16 — Submitted to the community directory, and no `fundingUrl`
+
+The plugin goes into the directory as it is: read-only, offline, no account, no telemetry. Two
+choices are worth writing down because both are the kind that is easier to make once than to
+revisit under review.
+
+**No `fundingUrl` in the manifest.** The field is only allowed to point at a service that
+actually takes money, and there is none. An empty or decorative funding link is a submission
+failure, not a nicety, so the field stays out until there is something real behind it.
+
+**`minAppVersion` stays at `1.10.0`.** It is not a guess at what is current — it is the
+release where `registerBasesView` arrived, and the plugin genuinely cannot load before it.
+Raising it later to whatever is newest would drop users who work fine today for nothing.
+
+The submission itself changed shape since the note below was written: it is no longer a PR
+against `obsidianmd/obsidian-releases`, but a form in the developer dashboard at
+community.obsidian.md, with an automated review that runs against **every** version rather
+than only the first. That makes `npm run lint` a release gate rather than a courtesy —
+`eslint-plugin-obsidianmd` is the same rule set the review applies, so a red lint on `main` is
+a delisted plugin waiting to happen. See [dev-workflow.md](dev-workflow.md) for the steps.
+
+---
+
 ## 2026-08-10 — Gitea is the source of truth, GitHub is a mirror
 
 Development happens on a self-hosted Gitea instance; a push mirror copies `main` and the tags

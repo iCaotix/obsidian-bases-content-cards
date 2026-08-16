@@ -133,12 +133,10 @@ What tests need: `CachedMetadata` fixtures (`frontmatterPosition`, `headings[]`,
 ## Where the code lives
 
 `origin` is a self-hosted Gitea instance, and that is the source of truth. A push mirror
-copies `main` and the tags to `https://github.com/<owner>/obsidian-bases-content-cards`,
-which exists for the two things that only exist on GitHub: releases BRAT can install from,
-and the community catalogue, whose submission is a PR against a GitHub repo.
-
-> Replace `<owner>` here and in the [README](../README.md) once the mirror exists —
-> `grep -rn '<owner>' .` finds every place.
+copies `main` and the tags to `https://github.com/iCaotix/obsidian-bases-content-cards`,
+which exists for the two things that only exist on GitHub: releases BRAT and Obsidian can
+install from, and the community directory, which verifies ownership through a GitHub
+account and reads `manifest.json` from the default branch of a GitHub repo.
 
 **Nothing is merged on GitHub.** A push mirror overwrites, so a commit made or a PR merged
 there is gone on the next sync. Anything that arrives that way has to be applied on Gitea
@@ -175,10 +173,39 @@ through a symlink, and refuses to run before `npm run build`.
 **BRAT installs from GitHub releases only**, which is the practical reason the mirror has to
 carry tags at all.
 
-## Community catalogue
+## Community directory
 
-Not submitted. When it is, it is a PR against
-[`obsidianmd/obsidian-releases`](https://github.com/obsidianmd/obsidian-releases) adding an
-entry to `community-plugins.json`, and the repo it points at must be the GitHub mirror. The
-checks worth passing first are the ones `eslint-plugin-obsidianmd` already runs in
-`npm run lint`.
+Submission is no longer a PR against `obsidianmd/obsidian-releases`. It happens in the
+developer dashboard at [community.obsidian.md](https://community.obsidian.md), and every
+version is scanned automatically after that — not just the first one.
+
+What the directory reads:
+
+- **`manifest.json` at the HEAD of the GitHub mirror's default branch.** That is what the
+  entry's metadata comes from, so it has to be committed and pushed, not only attached to a
+  release.
+- **The GitHub release whose tag equals `manifest.version`.** That is where users' installs
+  actually download `main.js`, `manifest.json` and `styles.css` from. Both have to line up.
+- **`README.md`**, an excerpt of which is shown on the public listing page. Relative links
+  and images (`./docs/screenshot.png`) are rewritten to resolve against the repo, so they may
+  stay relative.
+
+The steps, once per plugin:
+
+1. Sign in at [community.obsidian.md](https://community.obsidian.md) with an Obsidian
+   account, and connect the GitHub account that owns the mirror — that is how ownership is
+   verified.
+2. **Plugins → New plugin**, give it the mirror's URL, agree to the developer policies.
+3. The automated review answers within minutes; fixes are shipped as a new release with an
+   incremented version, not by re-submitting.
+
+The checks worth passing before submitting are the ones `eslint-plugin-obsidianmd` already
+runs in `npm run lint` — it is the same rule set the automated review applies, so a clean
+`npm run lint` is the local dry run.
+
+Two rules that are easy to trip over later:
+
+- `minAppVersion` must be a version that really is the minimum. Ours is `1.10.0` because that
+  is when `registerBasesView` arrived.
+- `fundingUrl` belongs in the manifest **only** if donations are actually accepted. Absent is
+  correct here.
